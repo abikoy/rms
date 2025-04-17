@@ -1,35 +1,77 @@
 const mongoose = require('mongoose');
 
+// Clear any existing indexes
+mongoose.connection.on('connected', async () => {
+  try {
+    await mongoose.connection.collection('users').dropIndexes();
+    console.log('Dropped all indexes from users collection');
+  } catch (error) {
+    console.log('No existing indexes to drop');
+  }
+});
+
 const userSchema = new mongoose.Schema({
-  _id: {
-    type: mongoose.Schema.Types.ObjectId,
-    auto: true
-  },
+  // Schema fields with validation
   fullName: {
     type: String,
-    required: true
+    required: [true, 'Full name is required'],
+    trim: true
   },
   email: {
     type: String,
-    required: true,
-    unique: true
+    required: [true, 'Email is required'],
+    trim: true,
+    lowercase: true,
+    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email address']
   },
   password: {
     type: String,
-    required: true
+    required: [true, 'Password is required'],
+    minlength: [6, 'Password must be at least 6 characters long']
   },
   role: {
     type: String,
-    required: true,
-    enum: ['System Admin', 'Asset Manager', 'Staff', 'Technical Team', 'School Dean', 'Department Head']
+    required: [true, 'Role is required'],
+    enum: {
+      values: ['system_admin', 'ddu_asset_manager', 'iot_asset_manager', 'staff', 'technical_team', 'department_head', 'school_dean'],
+      message: '{VALUE} is not a valid role'
+    }
   },
   department: {
     type: String,
-    required: true
+    required: function() {
+      return ['staff', 'department_head'].includes(this.role);
+    },
+    validate: {
+      validator: function(v) {
+        if (['staff', 'department_head'].includes(this.role)) {
+          return v && v.trim().length > 0;
+        }
+        return true;
+      },
+      message: 'Department is required for Staff and Department Head roles'
+    },
+    trim: true
   },
   phoneNumber: {
     type: String,
-    default: ''
+    trim: true
+  },
+  school: {
+    type: String,
+    required: function() {
+      return this.role === 'school_dean';
+    },
+    validate: {
+      validator: function(v) {
+        if (this.role === 'school_dean') {
+          return v && v.trim().length > 0;
+        }
+        return true;
+      },
+      message: 'School is required for School Dean role'
+    },
+    trim: true
   },
   profilePhoto: {
     type: String
@@ -44,21 +86,9 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-// Update timestamp before saving new document
+// Update the updatedAt timestamp before saving
 userSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
-  next();
-});
-
-// Update timestamp before updating existing document
-userSchema.pre(['findOneAndUpdate', 'updateOne'], function(next) {
-  this.set({ updatedAt: Date.now() });
-  next();
-});
-
-// Don't require all fields during update
-userSchema.pre(['findOneAndUpdate', 'updateOne'], function(next) {
-  this.setOptions({ runValidators: false });
   next();
 });
 

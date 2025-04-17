@@ -45,20 +45,60 @@ function SignUp() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.fullName?.trim()) {
+      setError('Full name is required');
+      return;
+    }
+    if (!formData.email?.trim()) {
+      setError('Email is required');
+      return;
+    }
+    if (!formData.password) {
+      setError('Password is required');
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
     }
+    if (!formData.role) {
+      setError('Role is required');
+      return;
+    }
+    
+    // Validate role-specific fields
+    if (['staff', 'department_head'].includes(formData.role) && !formData.department?.trim()) {
+      setError('Department is required for Staff and Department Head roles');
+      return;
+    }
+    if (formData.role === 'school_dean' && !formData.school?.trim()) {
+      setError('School is required for School Dean role');
+      return;
+    }
+
     try {
+      // Prepare user data
       const userData = {
-        ...formData,
-        username: formData.email // Using email as username
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        role: formData.role,
+        department: formData.department?.trim(),
+        school: formData.school?.trim(),
+        phoneNumber: formData.phoneNumber?.trim()
       };
-      delete userData.confirmPassword;
-      await dispatch(register(userData)).unwrap();
+
+      console.log('Sending registration data:', userData);
+      const result = await dispatch(register(userData)).unwrap();
+      console.log('Registration successful:', result);
       navigate('/login');
     } catch (err) {
-      setError(err.message || 'Registration failed');
+      console.error('Registration error:', err);
+      const errorMessage = err.message || 
+        (err.errors ? err.errors.join(', ') : 'Registration failed');
+      setError(errorMessage);
     }
   };
 
