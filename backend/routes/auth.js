@@ -137,6 +137,13 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
+    // Check user status if not system_admin
+    if (user.role !== 'system_admin' && user.status !== 'approved') {
+      return res.status(403).json({ 
+        message: 'Your account is pending approval from the system administrator'
+      });
+    }
+
     // Create token
     const payload = {
       id: user.id,

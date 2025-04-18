@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-const auth = (req, res, next) => {
+const auth = async (req, res, next) => {
   try {
     // Try to get token from different header locations
     let token = req.header('x-auth-token');
@@ -20,11 +21,26 @@ const auth = (req, res, next) => {
     console.log('Token received:', token ? 'Yes' : 'No');
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    console.log('Token verified, user:', decoded.id);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Add user from payload
-    req.user = decoded;
+    // Get user from database
+    const user = await User.findById(decoded.id).select('-password');
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if user is approved (except for system_admin)
+    if (user.role !== 'system_admin' && user.status !== 'approved') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is pending approval from the system administrator'
+      });
+    }
+
+    req.user = user;
     next();
   } catch (e) {
     console.error('Auth error:', e.message);

@@ -32,6 +32,7 @@ function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -93,7 +94,12 @@ function SignUp() {
       console.log('Sending registration data:', userData);
       const result = await dispatch(register(userData)).unwrap();
       console.log('Registration successful:', result);
-      navigate('/login');
+      if (result.success) {
+        setSuccessMessage('Registration successful! Please wait for admin approval.');
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
+      }
     } catch (err) {
       console.error('Registration error:', err);
       const errorMessage = err.message || 
@@ -160,11 +166,19 @@ function SignUp() {
             </Typography>
 
             {error && (
-              <Alert severity="error" sx={{ mb: 2, width: '100%' }}>
-                {error}
-              </Alert>
+              <Grid item xs={12}>
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              </Grid>
             )}
-
+            {successMessage && (
+              <Grid item xs={12}>
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  {successMessage}
+                </Alert>
+              </Grid>
+            )}
             <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
               <Grid container spacing={2}>
                 <Grid item xs={12}>

@@ -87,10 +87,8 @@ const AppContent = () => {
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         
         {/* Admin Routes */}
-        <Route path="/users">
-          <Route path="management" element={<AdminRoute><UserManagement /></AdminRoute>} />
-          <Route path="registration" element={<AdminRoute><UserRegistration /></AdminRoute>} />
-        </Route>
+        <Route path="/users/management" element={<AdminRoute><UserManagement /></AdminRoute>} />
+        <Route path="/users/registration" element={<AdminRoute><UserRegistration /></AdminRoute>} />
         <Route path="/resources" element={<AdminRoute><Resources /></AdminRoute>} />
         <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

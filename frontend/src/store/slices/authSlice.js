@@ -8,6 +8,7 @@ axios.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      config.headers['x-auth-token'] = token;
     }
     return config;
   },
@@ -31,6 +32,55 @@ export const register = createAsyncThunk(
         return rejectWithValue(error.response.data);
       }
       return rejectWithValue({ message: error.message || 'Network error occurred' });
+    }
+  }
+);
+
+// Get pending users
+export const getPendingUsers = createAsyncThunk(
+  'auth/getPendingUsers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(endpoints.admin.pendingUsers);
+      console.log('Pending users response:', response.data);
+      if (response.data.success) {
+        return response.data;
+      }
+      return rejectWithValue(response.data);
+    } catch (error) {
+      console.error('Error fetching pending users:', error.response?.data || error.message);
+      return rejectWithValue(error.response?.data || { message: error.message });
+    }
+  }
+);
+
+// Get approved users
+export const getApprovedUsers = createAsyncThunk(
+  'auth/getApprovedUsers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(endpoints.admin.approvedUsers);
+      console.log('Approved users response:', response.data);
+      if (response.data.success) {
+        return response.data;
+      }
+      return rejectWithValue(response.data);
+    } catch (error) {
+      console.error('Error fetching approved users:', error.response?.data || error.message);
+      return rejectWithValue(error.response?.data || { message: error.message });
+    }
+  }
+);
+
+// Update user status
+export const updateUserStatus = createAsyncThunk(
+  'auth/updateUserStatus',
+  async ({ userId, status }, { rejectWithValue }) => {
+    try {
+      const response = await axios.put(`${endpoints.admin.users}/${userId}/status`, { status });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || { message: error.message });
     }
   }
 );
@@ -182,15 +232,28 @@ const loadState = () => {
     return {
       token: token || null,
       user: null,
-      isAuthenticated: !!token,
+      isAuthenticated: false,
       loading: false,
       error: null,
+      pendingUsers: [],
+      approvedUsers: [],
+      usersLoading: false,
       registrationSuccess: false
     };
   }
 };
 
-const initialState = loadState();
+const initialState = {
+  user: null,
+  token: null,
+  isAuthenticated: false,
+  pendingUsers: [],
+  approvedUsers: [],
+  usersLoading: false,
+  loading: false,
+  error: null,
+  registrationSuccess: false
+};
 
 const authSlice = createSlice({
   name: 'auth',
@@ -204,6 +267,49 @@ const authSlice = createSlice({
     }
   },
   extraReducers: (builder) => {
+    // Get pending users
+    builder
+      .addCase(getPendingUsers.pending, (state) => {
+        state.usersLoading = true;
+        state.error = null;
+      })
+      .addCase(getPendingUsers.fulfilled, (state, action) => {
+        state.usersLoading = false;
+        state.pendingUsers = action.payload.users || [];
+        state.error = null;
+      })
+      .addCase(getPendingUsers.rejected, (state, action) => {
+        state.usersLoading = false;
+        state.pendingUsers = [];
+        state.error = action.payload?.message || 'Error fetching pending users';
+      })
+
+    // Get approved users
+    builder
+      .addCase(getApprovedUsers.pending, (state) => {
+        state.usersLoading = true;
+        state.error = null;
+      })
+      .addCase(getApprovedUsers.fulfilled, (state, action) => {
+        state.usersLoading = false;
+        state.approvedUsers = action.payload.users || [];
+        state.error = null;
+      })
+      .addCase(getApprovedUsers.rejected, (state, action) => {
+        state.usersLoading = false;
+        state.approvedUsers = [];
+        state.error = action.payload?.message || 'Error fetching approved users';
+      })
+
+    // Update user status
+    builder
+      .addCase(updateUserStatus.fulfilled, (state, action) => {
+        const updatedUser = action.payload.user;
+        state.pendingUsers = state.pendingUsers.filter(user => user._id !== updatedUser._id);
+        if (updatedUser.status === 'approved') {
+          state.approvedUsers.push(updatedUser);
+        }
+      })
     builder
       // Register cases
       .addCase(register.pending, (state) => {

@@ -1,6 +1,12 @@
-const API_URL = 'http://localhost:5003/api';
+const BASE_URL = 'http://localhost:5003';
+const API_URL = `${BASE_URL}/api`;
 
 export const endpoints = {
+  admin: {
+    pendingUsers: `${API_URL}/admin/pending-users`,
+    approvedUsers: `${API_URL}/admin/approved-users`,
+    users: `${API_URL}/admin/users`
+  },
   auth: {
     login: `${API_URL}/auth/login`,
     register: `${API_URL}/auth/register`,

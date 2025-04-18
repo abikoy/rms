@@ -24,6 +24,7 @@ function Login() {
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -37,7 +38,7 @@ function Login() {
       navigate(redirectTo);
     }
   }, [redirectTo, navigate]);
-  const { isLoading, error } = useSelector(state => state.auth);
+  const { isLoading } = useSelector(state => state.auth);
 
   const handleChange = (e) => {
     setFormData({
@@ -48,7 +49,15 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await dispatch(login(formData));
+    try {
+      await dispatch(login(formData)).unwrap();
+    } catch (err) {
+      console.error('Login error:', err);
+      const errorMessage = err.response?.status === 403
+        ? err.response.data.message
+        : err.response?.data?.message || err.message || 'An error occurred during login';
+      setError(errorMessage);
+    }
   };
 
   return (

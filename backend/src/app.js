@@ -10,6 +10,7 @@ const fs = require('fs');
 
 const AppError = require('./utils/appError');
 const authRoutes = require('../routes/auth');
+const adminRoutes = require('../routes/admin');
 // TODO: Uncomment when resource routes are implemented
 // const resourceRoutes = require('./routes/resources');
 
@@ -94,6 +95,7 @@ if (!fs.existsSync(defaultAvatarDest) && fs.existsSync(defaultAvatarSrc)) {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 // TODO: Uncomment when resource routes are implemented
 // app.use('/api/resources', resourceRoutes);
 

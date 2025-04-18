@@ -64,6 +64,8 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/admin', require('./routes/admin'));
 app.use('/api/profile', require('./routes/userProfile'));
 
 // Error handling middleware

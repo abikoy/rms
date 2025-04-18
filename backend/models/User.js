@@ -37,6 +37,12 @@ const userSchema = new mongoose.Schema({
       message: '{VALUE} is not a valid role'
     }
   },
+  status: {
+    type: String,
+    required: true,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
   department: {
     type: String,
     required: function() {
@@ -75,6 +81,11 @@ const userSchema = new mongoose.Schema({
   },
   profilePhoto: {
     type: String
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
   },
   createdAt: {
     type: Date,
