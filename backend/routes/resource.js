@@ -4,41 +4,6 @@ const Resource = require('../models/Resource');
 const auth = require('../middleware/auth');
 const { isAdmin, isAssetManager } = require('../middleware/roleCheck');
 
-// Get resources based on user role
-router.get('/', auth, async (req, res) => {
-  try {
-    let resources;
-    const userRole = req.user.role;
-    const userId = req.user._id;
-
-    if (userRole === 'admin') {
-      // System Administrator can see all resources
-      resources = await Resource.find();
-    } else if (userRole === 'ddu_asset_manager' || userRole === 'iot_asset_manager') {
-      // Asset managers can only see their own resources
-      resources = await Resource.find({
-        managerType: userRole
-      });
-    } else {
-      return res.status(403).json({
-        status: 'fail',
-        message: 'Unauthorized access'
-      });
-    }
-
-    res.json({
-      status: 'success',
-      data: resources
-    });
-  } catch (error) {
-    console.error('Error fetching resources:', error);
-    res.status(500).json({
-      status: 'error',
-      message: error.message
-    });
-  }
-});
-
 // Get a single resource by ID
 router.get('/:id', auth, async (req, res, next) => {
   try {
@@ -61,7 +26,7 @@ router.get('/:id', auth, async (req, res, next) => {
 
     // Check if user has permission to view this resource
     const userRole = req.user.role;
-    if (userRole !== 'admin' && resource.managerType !== userRole) {
+    if (userRole !== 'system_admin' && resource.managerType !== userRole) {
       return res.status(403).json({ 
         status: 'fail',
         message: 'You do not have permission to view this resource'
@@ -91,7 +56,7 @@ router.get('/', auth, async (req, res) => {
     console.log('User Role:', userRole);
     console.log('User ID:', userId);
 
-    if (userRole === 'admin') {
+    if (userRole === 'system_admin') {
       // System Administrator can see all resources
       resources = await Resource.find();
     } else if (userRole === 'ddu_asset_manager' || userRole === 'iot_asset_manager') {
@@ -100,14 +65,23 @@ router.get('/', auth, async (req, res) => {
         managerType: userRole
       });
     } else {
-      return res.status(403).json({ message: 'Unauthorized access' });
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Unauthorized access'
+      });
     }
 
     console.log(`Found ${resources.length} resources for ${userRole}`);
-    res.json(resources);
+    res.json({
+      status: 'success',
+      data: resources
+    });
   } catch (error) {
     console.error('Error fetching resources:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
   }
 });
 
@@ -133,7 +107,7 @@ router.put('/:id', auth, isAssetManager, async (req, res) => {
 
     // Check if user has permission to update this resource
     const userRole = req.user.role;
-    if (userRole !== 'admin' && resource.managerType !== userRole) {
+    if (userRole !== 'system_admin' && resource.managerType !== userRole) {
       return res.status(403).json({ 
         status: 'fail',
         message: 'You do not have permission to update this resource'
@@ -233,7 +207,7 @@ router.delete('/:id', auth, isAssetManager, async (req, res) => {
 
     // Check if user has permission to delete this resource
     const userRole = req.user.role;
-    if (userRole !== 'admin' && resource.managerType !== userRole) {
+    if (userRole !== 'system_admin' && resource.managerType !== userRole) {
       return res.status(403).json({ 
         status: 'fail',
         message: 'You do not have permission to delete this resource'

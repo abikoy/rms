@@ -140,8 +140,13 @@ const resourceSlice = createSlice({
       })
       .addCase(fetchResources.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.resources = action.payload.data || [];
-        state.error = null;
+        if (action.payload.status === 'success') {
+          state.resources = action.payload.data || [];
+          state.error = null;
+        } else {
+          state.resources = [];
+          state.error = action.payload.message || 'Failed to fetch resources';
+        }
       })
       .addCase(fetchResources.rejected, (state, action) => {
         state.isLoading = false;

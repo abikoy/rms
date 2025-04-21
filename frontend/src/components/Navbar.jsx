@@ -31,7 +31,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
-import path from 'path-browserify';
+
 
 const Navbar = ({ onDrawerToggle }) => {
   const theme = useTheme();
@@ -218,7 +218,7 @@ const Navbar = ({ onDrawerToggle }) => {
               sx={{ width: 32, height: 32 }}
               src={
                 user?.profilePhoto 
-                  ? `http://localhost:5003/uploads/profiles/${path.basename(user.profilePhoto)}` 
+                  ? `http://localhost:5003/uploads/profiles/${user.profilePhoto.split('/').pop()}` 
                   : '/default-avatar.png'
               }
               imgProps={{

@@ -44,8 +44,9 @@ const Resources = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
+    console.log('Current user role:', userRole);
     dispatch(fetchResources());
-  }, [dispatch]);
+  }, [dispatch, userRole]);
 
   const handleSearch = (event) => {
     setSearchQuery(event.target.value);
@@ -233,7 +234,7 @@ const Resources = () => {
                             <VisibilityIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        {(userRole === 'admin' || resource.managerType === userRole) && (
+                        {resource.managerType === userRole && (
                           <>
                             <Tooltip title="Edit">
                               <IconButton
