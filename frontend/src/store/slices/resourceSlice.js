@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:5003/api';
 
 // Async thunks
 export const fetchResources = createAsyncThunk(
@@ -47,6 +47,22 @@ export const updateResource = createAsyncThunk(
         }
       });
       return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const deleteResource = createAsyncThunk(
+  'resources/deleteResource',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await axios.delete(`${API_URL}/resources/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      return { id, ...response.data };
     } catch (error) {
       return rejectWithValue(error.response.data);
     }
@@ -114,6 +130,19 @@ const resourceSlice = createSlice({
       .addCase(updateResource.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload?.message || 'Failed to update resource';
+      })
+      // Delete resource
+      .addCase(deleteResource.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteResource.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.resources = state.resources.filter(resource => resource._id !== action.payload.id);
+      })
+      .addCase(deleteResource.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload?.message || 'Failed to delete resource';
       });
   }
 });
