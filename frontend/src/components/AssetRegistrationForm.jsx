@@ -116,6 +116,7 @@ const AssetRegistrationForm = ({ assetManagerType }) => {
 
     // Reset error state
     setError('');
+    setSnackbarMessage('');
 
     // Validate required fields
     if (!formData.assetType || !formData.assetClass) {
@@ -150,9 +151,6 @@ const AssetRegistrationForm = ({ assetManagerType }) => {
     }
 
     try {
-      // Log the form data for debugging
-      console.log('Form Data:', formData);
-      
       // Create the resource data object
       const resourceData = {
         name: formData.assetName,
@@ -162,15 +160,12 @@ const AssetRegistrationForm = ({ assetManagerType }) => {
         model: formData.assetModel,
         location: formData.location,
         status: 'available',
-        quantity: Number(formData.quantity) || 0,
+        quantity: parseInt(formData.quantity) || 1,
         unitPrice: {
-          birr: Number(formData.unitPriceBirr) || 0,
-          cents: Number(formData.unitPriceCents) || 0
+          birr: parseInt(formData.unitPriceBirr) || 0,
+          cents: parseInt(formData.unitPriceCents) || 0
         },
-        totalPrice: {
-          birr: totals.birr,
-          cents: totals.cents
-        },
+        totalPrice: totals,
         expenditureNo: formData.expenditureRegistryNo,
         incomingGoodsNo: formData.incomingGoodsRegistryNo,
         stockClassification: formData.stockClassification,
@@ -178,44 +173,82 @@ const AssetRegistrationForm = ({ assetManagerType }) => {
         shelfNo: formData.shelfNo,
         outgoingGoodsNo: formData.outgoingGoodsRegistryNo,
         orderNo: formData.orderNo,
-        managerType: assetManagerType, // Make sure this matches the enum in backend
-        date: formData.date || new Date().toISOString(),
+        managerType: assetManagerType,
+        date: formData.date || new Date(),
         storeKeeper: {
           name: formData.storeKeeperName,
-          date: formData.storeKeeperSignDate || new Date().toISOString()
+          date: formData.storeKeeperSignDate || new Date()
         },
         recipient: {
           name: formData.recipientName,
-          date: formData.recipientSignDate || new Date().toISOString()
+          date: formData.recipientSignDate || new Date()
         }
       };
 
-      // Debug log
-      console.log('Submitting resource data:', JSON.stringify(resourceData, null, 2));
-
-      // Log the resource data being sent
-      console.log('Sending resource data:', resourceData);
-
-      const result = await dispatch(createResource(resourceData)).unwrap();
-      console.log('Resource created successfully:', result);
-      // Show success message
-      setSnackbarMessage('Asset registered successfully!');
-      setSnackbarSeverity('success');
-      setOpenSnackbar(true);
-
-      // Navigate to the resources list page after 2 seconds
-      setTimeout(() => {
-        navigate('/resources');
-      }, 2000);
-    } catch (error) {
-      console.error('Failed to create asset:', error);
-      // Add more detailed error information
-      if (error.message) {
-        console.error('Error:', error);
+      // Dispatch the create resource action
+      const resultAction = await dispatch(createResource(resourceData));
+      
+      if (createResource.fulfilled.match(resultAction)) {
+        // Success case
+        setSnackbarMessage('Asset has been registered successfully! 🎉');
+        setSnackbarSeverity('success');
+        setOpenSnackbar(true);
+        
+        // Reset form after 1 second to give time for the success message to be seen
+        setTimeout(() => {
+          setFormData({
+            assetName: '',
+            serialNumber: '',
+            assetType: '',
+            assetClass: '',
+            assetModel: '',
+            location: '',
+            status: 'Not Assigned',
+            quantity: '',
+            unitPriceBirr: '',
+            unitPriceCents: '',
+            expenditureRegistryNo: '',
+            incomingGoodsRegistryNo: '',
+            stockClassification: '',
+            storeNo: '',
+            shelfNo: '',
+            outgoingGoodsRegistryNo: '',
+            orderNo: '',
+            date: '',
+            storeKeeperName: '',
+            storeKeeperSignDate: '',
+            recipientName: '',
+            recipientSignDate: ''
+          });
+          // Navigate to resources page
+          navigate('/resources');
+        }, 1000);
+      } else if (createResource.rejected.match(resultAction)) {
+        // Error case
+        let errorMsg = resultAction.payload?.message || 'Failed to create asset';
+        
+        // Check for duplicate serial number error
+        if (errorMsg.includes('E11000 duplicate key error') || 
+            errorMsg.includes('serial number is already in use')) {
+          errorMsg = 'This serial number is already in use. Please use a different serial number.';
+        }
+        
+        setError(errorMsg);
+        setSnackbarMessage(errorMsg);
+        setSnackbarSeverity('error');
+        setOpenSnackbar(true);
       }
-      setError(error.message || 'Failed to create asset');
-      // Show error message
-      setSnackbarMessage(error.message || 'Failed to create asset');
+    } catch (error) {
+      let errorMsg = error.message || 'Failed to create asset';
+      
+      // Check for duplicate serial number error
+      if (errorMsg.includes('E11000 duplicate key error') || 
+          errorMsg.includes('serial number is already in use')) {
+        errorMsg = 'This serial number is already in use. Please use a different serial number.';
+      }
+      
+      setError(errorMsg);
+      setSnackbarMessage(errorMsg);
       setSnackbarSeverity('error');
       setOpenSnackbar(true);
     }

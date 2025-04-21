@@ -3,19 +3,47 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:5003/api';
 
+// Helper function to get auth header
+const getAuthHeader = () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  return {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  };
+};
+
 // Async thunks
 export const fetchResources = createAsyncThunk(
   'resources/fetchResources',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/resources`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
+      const config = getAuthHeader();
+      const response = await axios.get(`${API_URL}/resources`, config);
+      
+      if (response.data.status === 'success') {
+        return response.data;
+      }
+      
+      return rejectWithValue({
+        message: response.data.message || 'Failed to fetch resources'
       });
-      return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || { message: error.message });
+      if (error.message === 'No authentication token found') {
+        return rejectWithValue({ message: 'Please login to view resources' });
+      }
+      
+      if (error.response?.status === 403) {
+        return rejectWithValue({ message: 'You do not have permission to view resources' });
+      }
+
+      return rejectWithValue({
+        message: error.response?.data?.message || 'Failed to fetch resources'
+      });
     }
   }
 );
@@ -24,7 +52,6 @@ export const fetchResourceById = createAsyncThunk(
   'resources/fetchResourceById',
   async (id, { rejectWithValue }) => {
     try {
-      // Validate MongoDB ID format
       if (!id.match(/^[0-9a-fA-F]{24}$/)) {
         return rejectWithValue({
           status: 'fail',
@@ -32,11 +59,8 @@ export const fetchResourceById = createAsyncThunk(
         });
       }
 
-      const response = await axios.get(`${API_URL}/resources/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const config = getAuthHeader();
+      const response = await axios.get(`${API_URL}/resources/${id}`, config);
 
       if (response.data.status === 'success') {
         return response.data.data;
@@ -47,7 +71,10 @@ export const fetchResourceById = createAsyncThunk(
         message: response.data.message || 'Failed to fetch resource'
       });
     } catch (error) {
-      console.log('Error fetching resource:', error.response?.data || error);
+      if (error.message === 'No authentication token found') {
+        return rejectWithValue({ message: 'Please login to view resource details' });
+      }
+
       return rejectWithValue({
         status: error.response?.data?.status || 'error',
         message: error.response?.data?.message || error.message || 'Failed to fetch resource'
@@ -60,17 +87,42 @@ export const createResource = createAsyncThunk(
   'resources/createResource',
   async (resourceData, { rejectWithValue }) => {
     try {
-      console.log('Making API request with data:', resourceData);
-      const response = await axios.post(`${API_URL}/resources`, resourceData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
+      const config = getAuthHeader();
+      const response = await axios.post(`${API_URL}/resources`, resourceData, config);
+      
+      // Handle successful response
+      if (response.data) {
+        // If response already has the correct format, return it
+        if (response.data.status === 'success' && response.data.data) {
+          return response.data;
         }
+        
+        // If response is just the resource data, wrap it
+        return {
+          status: 'success',
+          data: response.data
+        };
+      }
+      
+      return rejectWithValue({
+        status: 'error',
+        message: 'No data received from server'
       });
-      console.log('API response:', response.data);
-      return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || { message: error.message });
+      if (error.message === 'No authentication token found') {
+        return rejectWithValue({ 
+          status: 'error',
+          message: 'Please login to create resources' 
+        });
+      }
+      
+      // Get the error message from the response
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create resource';
+      
+      return rejectWithValue({
+        status: 'error',
+        message: errorMessage
+      });
     }
   }
 );
@@ -79,16 +131,19 @@ export const updateResource = createAsyncThunk(
   'resources/updateResource',
   async ({ id, resourceData }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(`${API_URL}/resources/${id}`, resourceData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const config = getAuthHeader();
+      const response = await axios.put(`${API_URL}/resources/${id}`, resourceData, config);
+      
       if (response.data.status === 'success') {
         return { id, ...response.data.data };
       }
+      
       return rejectWithValue(response.data);
     } catch (error) {
+      if (error.message === 'No authentication token found') {
+        return rejectWithValue({ message: 'Please login to update resources' });
+      }
+      
       return rejectWithValue(error.response?.data || { 
         status: 'error',
         message: error.message 
@@ -101,13 +156,14 @@ export const deleteResource = createAsyncThunk(
   'resources/deleteResource',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await axios.delete(`${API_URL}/resources/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const config = getAuthHeader();
+      const response = await axios.delete(`${API_URL}/resources/${id}`, config);
       return { id, ...response.data };
     } catch (error) {
+      if (error.message === 'No authentication token found') {
+        return rejectWithValue({ message: 'Please login to delete resources' });
+      }
+      
       return rejectWithValue(error.response?.data || { message: error.message });
     }
   }
@@ -151,6 +207,7 @@ const resourceSlice = createSlice({
       .addCase(fetchResources.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload?.message || 'Failed to fetch resources';
+        state.resources = [];
       })
       // Fetch resource by id
       .addCase(fetchResourceById.pending, (state) => {
@@ -178,7 +235,9 @@ const resourceSlice = createSlice({
       })
       .addCase(createResource.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.resources.push(action.payload);
+        // Any data we receive in fulfilled case is considered success
+        state.resources.push(action.payload.data);
+        state.error = null;
       })
       .addCase(createResource.rejected, (state, action) => {
         state.isLoading = false;
@@ -195,6 +254,7 @@ const resourceSlice = createSlice({
         if (index !== -1) {
           state.resources[index] = action.payload;
         }
+        state.error = null;
       })
       .addCase(updateResource.rejected, (state, action) => {
         state.isLoading = false;
@@ -208,6 +268,7 @@ const resourceSlice = createSlice({
       .addCase(deleteResource.fulfilled, (state, action) => {
         state.isLoading = false;
         state.resources = state.resources.filter(resource => resource._id !== action.payload.id);
+        state.error = null;
       })
       .addCase(deleteResource.rejected, (state, action) => {
         state.isLoading = false;

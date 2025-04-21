@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -32,7 +32,9 @@ import {
   Close as RejectIcon,
   Visibility as ViewIcon,
 } from '@mui/icons-material';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchResources } from '../../store/slices/resourceSlice';
+import { fetchUsers } from '../../store/slices/userSlice';
 import DashboardLayout from '../../components/DashboardLayout';
 import { Line } from 'react-chartjs-2';
 import {
@@ -109,66 +111,63 @@ const StatCard = ({ title, value, icon, trend }) => (
 );
 
 const AdminDashboard = () => {
-  const [tabValue, setTabValue] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('');
-  const [sortOrder, setSortOrder] = useState('ascending');
+  const dispatch = useDispatch();
+  const { resources } = useSelector((state) => state.resources);
+  const { users } = useSelector((state) => state.users);
+  const approvedUsers = users.filter(user => user.status === 'approved');
 
-  // Mock data - replace with actual API calls
-  const pendingUsers = [
-    {
-      fullName: 'dira',
-      email: 'dira@ddu.edu.et',
-      department: 'cs',
-      role: 'staff',
-    },
-    // Add more mock data as needed
-  ];
+  useEffect(() => {
+    dispatch(fetchResources());
+    dispatch(fetchUsers());
+  }, [dispatch]);
 
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
+  // Calculate statistics
+  const totalResources = resources.length;
+  const totalUsers = approvedUsers.length;
+  const dduAssets = resources.filter(r => r.managerType === 'ddu_asset_manager').length;
+  const iotAssets = resources.filter(r => r.managerType === 'iot_asset_manager').length;
+
+  // Calculate asset class distribution
+  const assetClassCounts = resources.reduce((acc, resource) => {
+    acc[resource.assetClass] = (acc[resource.assetClass] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Prepare data for the asset class chart
+  const assetClassData = {
+    labels: Object.keys(assetClassCounts),
+    datasets: [
+      {
+        data: Object.values(assetClassCounts),
+        backgroundColor: [
+          'rgb(99, 102, 241)',   // Indigo
+          'rgb(16, 185, 129)',   // Green
+          'rgb(249, 115, 22)',   // Orange
+          'rgb(236, 72, 153)',   // Pink
+          'rgb(59, 130, 246)',   // Blue
+          'rgb(168, 85, 247)',   // Purple
+        ],
+      },
+    ],
   };
 
-  const handleSearch = (event) => {
-    setSearchQuery(event.target.value);
-  };
-
-  const handleDepartmentFilter = (event) => {
-    setDepartmentFilter(event.target.value);
-  };
-
-  const handleSortOrder = (event) => {
-    setSortOrder(event.target.value);
-  };
-
-  // Sample data for the line chart
-  const salesData = {
+  // Prepare data for the resource trend chart
+  const resourceTrendData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     datasets: [
       {
-        label: 'Resource Usage 2024',
-        data: [18, 15, 4, 8, 2, 13, 13, 15, 16, 19, 17, 19],
+        label: 'DDU Assets',
+        data: [10, 12, 15, 14, 16, 17, 18, 19, 20, 22, 23, dduAssets],
         borderColor: 'rgb(99, 102, 241)',
         backgroundColor: 'rgba(99, 102, 241, 0.1)',
         fill: true,
       },
       {
-        label: 'Resource Usage 2023',
-        data: [12, 10, 3, 6, 5, 8, 9, 10, 11, 12, 11, 13],
-        borderColor: 'rgb(99, 102, 241, 0.3)',
-        backgroundColor: 'rgba(99, 102, 241, 0.05)',
+        label: 'IoT Assets',
+        data: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, iotAssets],
+        borderColor: 'rgb(16, 185, 129)',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
         fill: true,
-      },
-    ],
-  };
-
-  // Sample data for the traffic source chart
-  const trafficData = {
-    labels: ['Desktop', 'Tablet', 'Phone'],
-    datasets: [
-      {
-        data: [63, 15, 22],
-        backgroundColor: ['rgb(99, 102, 241)', 'rgb(16, 185, 129)', 'rgb(249, 115, 22)'],
       },
     ],
   };
@@ -183,33 +182,30 @@ const AdminDashboard = () => {
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="BUDGET"
-              value="$24k"
+              title="TOTAL RESOURCES"
+              value={totalResources}
               icon={<Assessment sx={{ color: 'primary.main' }} />}
-              trend={{ type: 'increase', value: 12 }}
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
               title="TOTAL USERS"
-              value="1.6k"
+              value={totalUsers}
               icon={<People sx={{ color: 'primary.main' }} />}
-              trend={{ type: 'decrease', value: 16 }}
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="TASK PROGRESS"
-              value="75.5%"
+              title="DDU ASSETS"
+              value={dduAssets}
               icon={<Speed sx={{ color: 'primary.main' }} />}
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="TOTAL PROFIT"
-              value="$15k"
+              title="IOT ASSETS"
+              value={iotAssets}
               icon={<Assessment sx={{ color: 'primary.main' }} />}
-              trend={{ type: 'increase', value: 8 }}
             />
           </Grid>
         </Grid>
@@ -219,12 +215,12 @@ const AdminDashboard = () => {
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                  <Typography variant="h6">Resource Usage</Typography>
+                  <Typography variant="h6">Resource Registration Trend</Typography>
                   <IconButton size="small">↻</IconButton>
                 </Box>
                 <Box sx={{ height: 350 }}>
                   <Line
-                    data={salesData}
+                    data={resourceTrendData}
                     options={{
                       responsive: true,
                       maintainAspectRatio: false,
@@ -241,11 +237,11 @@ const AdminDashboard = () => {
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                  Traffic Source
+                  Asset Class Distribution
                 </Typography>
                 <Box sx={{ height: 300 }}>
                   <Doughnut
-                    data={trafficData}
+                    data={assetClassData}
                     options={{
                       responsive: true,
                       maintainAspectRatio: false,

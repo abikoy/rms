@@ -14,6 +14,7 @@ import Landing from './pages/landing/Landing';
 import Login from './pages/auth/Login';
 import SignUp from './pages/auth/SignUp';
 import AdminDashboard from './pages/dashboard/AdminDashboard';
+import AssetManagerDashboard from './pages/dashboard/AssetManagerDashboard';
 import StaffDashboard from './pages/dashboard/StaffDashboard';
 import TechnicalTeamDashboard from './pages/dashboard/TechnicalTeamDashboard';
 import SchoolDeanDashboard from './pages/dashboard/SchoolDeanDashboard';
@@ -28,6 +29,9 @@ import Profile from './pages/common/Profile';
 import TransferResources from './pages/resources/TransferResources';
 import AddIoTAsset from './pages/asset-managers/iot/AddIoTAsset';
 import AddDDUAsset from './pages/asset-managers/ddu/AddDDUAsset';
+import MyResources from './pages/staff/MyResources';
+import AvailableResources from './pages/staff/AvailableResources';
+import StaffSettings from './pages/staff/Settings';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -53,6 +57,21 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
+const StaffRoute = ({ children }) => {
+  const auth = useSelector((state) => state.auth);
+  
+  if (!auth.isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  const allowedRoles = ['staff'];
+  if (!auth.user || !allowedRoles.includes(auth.user.role)) {
+    return <Navigate to="/dashboard" />;
+  }
+
+  return children;
+};
+
 const AppContent = () => {
   const auth = useSelector((state) => state.auth);
   
@@ -60,9 +79,10 @@ const AppContent = () => {
   const getDashboardComponent = () => {
     switch (auth.user?.role) {
       case 'system_admin':
+        return <AdminDashboard />;
       case 'ddu_asset_manager':
       case 'iot_asset_manager':
-        return <AdminDashboard />;
+        return <AssetManagerDashboard />;
       case 'staff':
         return <StaffDashboard />;
       case 'technical_team':
@@ -97,9 +117,15 @@ const AppContent = () => {
         <Route path="/resources/:id" element={<AdminRoute><ResourceDetails /></AdminRoute>} />
         <Route path="/resources/:id/edit" element={<AdminRoute><EditResource /></AdminRoute>} />
         <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/asset-managers/iot/add" element={<AdminRoute><AddIoTAsset /></AdminRoute>} />
         <Route path="/asset-managers/ddu/add" element={<AdminRoute><AddDDUAsset /></AdminRoute>} />
+
+        {/* Staff Routes */}
+        <Route path="/staff/dashboard" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
+        <Route path="/staff/my-resources" element={<StaffRoute><MyResources /></StaffRoute>} />
+        <Route path="/staff/available-resources" element={<StaffRoute><AvailableResources /></StaffRoute>} />
+        <Route path="/staff/transfer-resources" element={<StaffRoute><TransferResources /></StaffRoute>} />
+        <Route path="/staff/settings" element={<StaffRoute><StaffSettings /></StaffRoute>} />
 
         {/* Catch-all route for 404 */}
         <Route path="*" element={<Navigate to="/" />} />

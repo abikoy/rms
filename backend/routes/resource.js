@@ -26,7 +26,15 @@ router.get('/:id', auth, async (req, res, next) => {
 
     // Check if user has permission to view this resource
     const userRole = req.user.role;
-    if (userRole !== 'system_admin' && resource.managerType !== userRole) {
+    if (userRole === 'staff') {
+      // Staff can only view available and unassigned resources
+      if (resource.status !== 'available' || resource.assignedTo) {
+        return res.status(403).json({ 
+          status: 'fail',
+          message: 'You do not have permission to view this resource'
+        });
+      }
+    } else if (userRole !== 'system_admin' && resource.managerType !== userRole) {
       return res.status(403).json({ 
         status: 'fail',
         message: 'You do not have permission to view this resource'
@@ -64,6 +72,13 @@ router.get('/', auth, async (req, res) => {
       resources = await Resource.find({
         managerType: userRole
       });
+    } else if (userRole === 'staff') {
+      // Staff can only see resources with status 'available'
+      resources = await Resource.find({
+        status: 'available'
+      });
+      
+      console.log('Available resources:', resources);
     } else {
       return res.status(403).json({
         status: 'fail',
@@ -157,8 +172,8 @@ router.post('/', auth, isAssetManager, async (req, res) => {
       assetClass: req.body.assetClass,
       model: req.body.model,
       location: req.body.location,
-      status: req.body.status || 'available',
-      quantity: req.body.quantity || 0,
+      status: 'available',  // Set status to available by default
+      quantity: req.body.quantity || 1,
       unitPrice: req.body.unitPrice || { birr: 0, cents: 0 },
       totalPrice: req.body.totalPrice || { birr: 0, cents: 0 },
       // Registry Information
@@ -179,10 +194,25 @@ router.post('/', auth, isAssetManager, async (req, res) => {
 
     const newResource = await resource.save();
     console.log('Resource created successfully:', newResource);
-    res.status(201).json(newResource);
+    res.status(201).json({
+      status: 'success',
+      data: newResource
+    });
   } catch (error) {
     console.error('Error creating resource:', error);
-    res.status(400).json({ message: error.message });
+    
+    // Check for duplicate key error
+    if (error.code === 11000 && error.keyPattern?.serialNumber) {
+      return res.status(400).json({ 
+        status: 'error',
+        message: 'This serial number is already in use. Please use a different serial number.'
+      });
+    }
+    
+    res.status(400).json({ 
+      status: 'error',
+      message: error.message 
+    });
   }
 });
 
