@@ -14,17 +14,29 @@ import {
   Grid,
 } from '@mui/material';
 import DashboardLayout from '../../components/DashboardLayout';
+import axios from 'axios';
+import { endpoints } from '../../config/api';
+
+const departmentRoles = ['staff', 'department_head'];
+const schoolRoles = ['school_dean'];
+
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 const UserRegistration = () => {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
-    phone: '',
+    phoneNumber: '',
     department: '',
     role: '',
     password: '',
     confirmPassword: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
@@ -36,7 +48,10 @@ const UserRegistration = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const shouldShowDepartment = departmentRoles.includes(formData.role);
+  const shouldShowSchool = schoolRoles.includes(formData.role);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
@@ -46,20 +61,33 @@ const UserRegistration = () => {
       return;
     }
 
-    // TODO: Add API integration
-    console.log('Form submitted:', formData);
-    setSuccess(true);
-
-    // Reset form
-    setFormData({
-      fullName: '',
-      email: '',
-      phone: '',
-      department: '',
-      role: '',
-      password: '',
-      confirmPassword: '',
-    });
+    // Prepare data for backend
+    const dataToSend = {
+      ...formData,
+      status: 'approved', // Admin-created users are immediately approved
+    };
+    try {
+      const response = await axios.post(endpoints.auth.register, dataToSend);
+      if (response.data && response.data.success === false) {
+        setError(response.data.message || 'Registration failed.');
+        setSuccess(false);
+      } else {
+        setSuccess(true);
+        setError(null);
+        setFormData({
+          fullName: '',
+          email: '',
+          phoneNumber: '',
+          department: '',
+          role: '',
+          password: '',
+          confirmPassword: '',
+        });
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Registration failed.');
+      setSuccess(false);
+    }
   };
 
   return (
@@ -109,12 +137,50 @@ const UserRegistration = () => {
                     fullWidth
                     label="Password"
                     name="password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={handleChange}
                     required
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label="toggle password visibility"
+                            onClick={() => setShowPassword((show) => !show)}
+                            edge="end"
+                          >
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      )
+                    }}
                   />
                 </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Confirm Password"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    required
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label="toggle confirm password visibility"
+                            onClick={() => setShowConfirmPassword((show) => !show)}
+                            edge="end"
+                          >
+                            {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      )
+                    }}
+                  />
+                </Grid>
+               
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth required>
                     <InputLabel>Role</InputLabel>
@@ -134,22 +200,42 @@ const UserRegistration = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth required>
-                    <InputLabel>Department</InputLabel>
-                    <Select
-                      name="department"
-                      value={formData.department}
-                      onChange={handleChange}
-                      label="Department"
-                    >
-                      <MenuItem value="cs">Computer Science</MenuItem>
-                      <MenuItem value="it">Information Technology</MenuItem>
-                      <MenuItem value="se">Software Engineering</MenuItem>
-                      {/* Add more departments as needed */}
-                    </Select>
-                  </FormControl>
-                </Grid>
+                {shouldShowDepartment && (
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth required>
+                      <InputLabel>Department</InputLabel>
+                      <Select
+                        name="department"
+                        value={formData.department}
+                        onChange={handleChange}
+                        label="Department"
+                      >
+                        <MenuItem value="cs">Computer Science</MenuItem>
+                        <MenuItem value="it">Information Technology</MenuItem>
+                        <MenuItem value="se">Software Engineering</MenuItem>
+                        {/* Add more departments as needed */}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                )}
+                {shouldShowSchool && (
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth required>
+                      <InputLabel>School</InputLabel>
+                      <Select
+                        name="school"
+                        value={formData.school}
+                        onChange={handleChange}
+                        label="School"
+                      >
+                        <MenuItem value="cs">Computer Science</MenuItem>
+                        <MenuItem value="it">Information Technology</MenuItem>
+                        <MenuItem value="se">Software Engineering</MenuItem>
+                        {/* Add more schools as needed */}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                )}
                 <Grid item xs={12}>
                   {error && (
                     <Alert severity="error" sx={{ mb: 2 }}>

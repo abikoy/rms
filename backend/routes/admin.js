@@ -3,6 +3,138 @@ const router = express.Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
+// Get all users
+router.get('/users', auth, async (req, res) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Error fetching users', error: error.message });
+  }
+});
+
+// Get user by ID
+router.get('/users/:userId', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ message: 'Error fetching user', error: error.message });
+  }
+});
+
+// Delete user by ID
+router.delete('/users/:userId', auth, async (req, res) => {
+  try {
+    // Check if the requesting user is a system_admin
+    if (req.user.role !== 'system_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only system administrators can delete users.'
+      });
+    }
+
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    await User.findByIdAndDelete(req.params.userId);
+    res.json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting user',
+      error: error.message
+    });
+  }
+});
+
+// Update user by ID
+router.put('/users/:userId', auth, async (req, res) => {
+  try {
+    // Check if the requesting user is a system_admin
+    if (req.user.role !== 'system_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only system administrators can update users.'
+      });
+    }
+
+    const { fullName, email, role, department, school, phoneNumber } = req.body;
+    
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Validate role-specific fields
+    if (role === 'school_dean' && !school) {
+      return res.status(400).json({
+        success: false,
+        message: 'School is required for School Dean role'
+      });
+    }
+    if (['staff', 'department_head'].includes(role) && !department) {
+      return res.status(400).json({
+        success: false,
+        message: 'Department is required for Staff and Department Head roles'
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.userId,
+      {
+        $set: {
+          fullName,
+          email,
+          role,
+          department,
+          school,
+          phoneNumber,
+          updatedAt: Date.now()
+        }
+      },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    res.json({
+      success: true,
+      message: 'User updated successfully',
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid input data',
+        errors: Object.values(error.errors).map(err => err.message)
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: 'Error updating user',
+      error: error.message
+    });
+  }
+});
+
 // Debug middleware for admin routes
 router.use((req, res, next) => {
   console.log('Admin route accessed:', req.method, req.path);

@@ -1,8 +1,10 @@
+const express = require('express');
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-const app = require('./app');
+const cors = require('cors');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-dotenv.config();
+const app = require('./app');
 
 process.on('uncaughtException', err => {
   console.log('UNCAUGHT EXCEPTION! 💥 Shutting down...');

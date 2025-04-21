@@ -8,23 +8,88 @@ const auth = require('../middleware/auth');
 // @route   POST api/auth/register
 // @desc    Register user
 // @access  Public
-// Debug route to list all users
-router.get('/debug/users', async (req, res) => {
+// Delete user by ID
+router.delete('/users/:userId', auth, async (req, res) => {
   try {
-    const users = await User.find({}, 'email role');
-    res.json(users);
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await User.findByIdAndDelete(req.params.userId);
+    res.json({ message: 'User deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error deleting user:', error);
+    res.status(500).json({ message: 'Error deleting user', error: error.message });
   }
 });
 
-// Debug route to clear all users (be careful with this!)
-router.post('/debug/clear-users', async (req, res) => {
+// Update user by ID
+router.put('/users/:userId', auth, async (req, res) => {
   try {
-    await User.deleteMany({});
-    res.json({ message: 'All users cleared' });
+    const { fullName, email, role, department, school, phoneNumber } = req.body;
+    
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Validate role-specific fields
+    if (role === 'school_dean' && !school) {
+      return res.status(400).json({ message: 'School is required for School Dean role' });
+    }
+    if (['staff', 'department_head'].includes(role) && !department) {
+      return res.status(400).json({ message: 'Department is required for Staff and Department Head roles' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.userId,
+      {
+        $set: {
+          fullName,
+          email,
+          role,
+          department,
+          school,
+          phoneNumber,
+          updatedAt: Date.now()
+        }
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.json({ message: 'User updated successfully', user: updatedUser });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error updating user:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Invalid input data', errors: Object.values(error.errors).map(err => err.message) });
+    }
+    res.status(500).json({ message: 'Error updating user', error: error.message });
+  }
+});
+
+// Get all users
+router.get('/users', auth, async (req, res) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Error fetching users', error: error.message });
+  }
+});
+
+// Get user by ID
+router.get('/users/:userId', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ message: 'Error fetching user', error: error.message });
   }
 });
 
@@ -33,24 +98,32 @@ router.post('/register', async (req, res) => {
     console.log('Registration request received:', req.body);
     const { fullName, email, password, role, department, school, phoneNumber } = req.body;
 
+    // Accept status from request or default to 'pending'
+    let { status } = req.body;
+    if (!status) status = 'pending';
+
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Hash password before saving
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     // Create new user with all fields
-    const user = new User({
+    const newUser = new User({
       fullName,
-      email,
-      password,
+      email: normalizedEmail,
+      password: hashedPassword,
       role,
       department,
       school,
-      phoneNumber
+      phoneNumber,
+      status
     });
-
-    // Hash password before validation
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
 
     // Validate user (this will run all schema validations)
     try {
-      await user.validate();
+      await newUser.validate();
     } catch (validationError) {
       console.error('Validation error:', validationError);
       return res.status(400).json({
@@ -60,18 +133,7 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Create new user object with normalized email
-    const normalizedEmail = email.toLowerCase().trim();
-    const newUser = new User({
-      ...req.body,
-      email: normalizedEmail
-    });
-
     try {
-      // Hash password before saving
-      const salt = await bcrypt.genSalt(10);
-      newUser.password = await bcrypt.hash(password, salt);
-
       // Try to save the user
       await newUser.save();
       console.log('User saved successfully');

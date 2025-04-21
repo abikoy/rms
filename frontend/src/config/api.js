@@ -11,7 +11,7 @@ export const endpoints = {
     login: `${API_URL}/auth/login`,
     register: `${API_URL}/auth/register`,
     profile: `${API_URL}/auth/profile`,
-    user: `${API_URL}/auth/user`,
+    user: `${API_URL}/auth/user`
   },
   resources: {
     list: `${API_URL}/resources`,
