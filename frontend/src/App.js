@@ -21,9 +21,13 @@ import DepartmentHeadDashboard from './pages/dashboard/DepartmentHeadDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import UserRegistration from './pages/admin/UserRegistration';
 import Resources from './pages/admin/Resources';
+import ResourceDetails from './pages/admin/ResourceDetails';
+import EditResource from './pages/admin/EditResource';
 import Settings from './pages/admin/Settings';
 import Profile from './pages/common/Profile';
 import TransferResources from './pages/resources/TransferResources';
+import AddIoTAsset from './pages/asset-managers/iot/AddIoTAsset';
+import AddDDUAsset from './pages/asset-managers/ddu/AddDDUAsset';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -90,8 +94,12 @@ const AppContent = () => {
         <Route path="/users/management" element={<AdminRoute><UserManagement /></AdminRoute>} />
         <Route path="/users/registration" element={<AdminRoute><UserRegistration /></AdminRoute>} />
         <Route path="/resources" element={<AdminRoute><Resources /></AdminRoute>} />
+        <Route path="/resources/:id" element={<AdminRoute><ResourceDetails /></AdminRoute>} />
+        <Route path="/resources/:id/edit" element={<AdminRoute><EditResource /></AdminRoute>} />
         <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/asset-managers/iot/add" element={<AdminRoute><AddIoTAsset /></AdminRoute>} />
+        <Route path="/asset-managers/ddu/add" element={<AdminRoute><AddDDUAsset /></AdminRoute>} />
 
         {/* Catch-all route for 404 */}
         <Route path="*" element={<Navigate to="/" />} />

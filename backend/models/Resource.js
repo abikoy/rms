@@ -10,14 +10,35 @@ const resourceSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  type: {
+    type: String,
+    required: true,
+    enum: ['consumable_resources', 'non_consumable_resources']
+  },
   assetClass: {
     type: String,
     required: true,
-    enum: ['hardware', 'software', 'network', 'other']
+    enum: [
+      // Consumable Resources
+      'STATIONERY',
+      'CLEANING_SUPPLIES',
+      'FUEL',
+      'FOOD_ITEMS',
+      'MAINTENANCE_SUPPLIES',
+      'TEACHING_MATERIALS',
+      'MEDICAL_SUPPLIES',
+      // Non-Consumable Resources
+      'OFFICE_FURNITURE',
+      'IT_EQUIPMENT',
+      'AV_EQUIPMENT',
+      'LAB_EQUIPMENT',
+      'MACHINERY_TOOLS',
+      'VEHICLES',
+      'BUILDINGS'
+    ]
   },
-  type: {
-    type: String,
-    required: true
+  model: {
+    type: String
   },
   location: {
     type: String,
@@ -29,8 +50,61 @@ const resourceSchema = new mongoose.Schema({
     enum: ['available', 'in_use', 'maintenance'],
     default: 'available'
   },
-  description: {
-    type: String
+  quantity: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  unitPrice: {
+    birr: {
+      type: Number,
+      required: true,
+      default: 0
+    },
+    cents: {
+      type: Number,
+      required: true,
+      default: 0
+    }
+  },
+  totalPrice: {
+    birr: {
+      type: Number,
+      required: true,
+      default: 0
+    },
+    cents: {
+      type: Number,
+      required: true,
+      default: 0
+    }
+  },
+  // Registry Information
+  expenditureNo: String,
+  incomingGoodsNo: String,
+  stockClassification: String,
+  storeNo: String,
+  shelfNo: String,
+  outgoingGoodsNo: String,
+  orderNo: String,
+  // Manager Information
+  managerType: {
+    type: String,
+    required: true,
+    enum: ['iot_asset_manager', 'ddu_asset_manager']
+  },
+  date: {
+    type: Date,
+    default: Date.now
+  },
+  // Signatures
+  storeKeeper: {
+    name: String,
+    date: Date
+  },
+  recipient: {
+    name: String,
+    date: Date
   }
 }, {
   timestamps: true
