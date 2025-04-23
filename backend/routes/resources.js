@@ -4,16 +4,31 @@ const auth = require('../middleware/auth');
 const Resource = require('../models/Resource');
 const ResourceTransfer = require('../models/ResourceTransfer');
 
-// @route   GET /resources/department/:department
-// @desc    Get resources by department
+// @route   GET /api/resources
+// @desc    Get all resources
 // @access  Private
-router.get('/department/:department', auth, async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
-    const resources = await Resource.find({ department: req.params.department });
-    res.json(resources);
+    const resources = await Resource.find()
+      .select('name serialNumber type assetClass model location status managerType price quantity createdAt updatedAt')
+      .lean(); // Convert to plain JavaScript objects
+
+    // Log the first resource for debugging
+    if (resources.length > 0) {
+      console.log('Sample resource:', resources[0]);
+    }
+
+    res.json({
+      status: 'success',
+      data: resources
+    });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Error fetching resources:', err.message);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch resources',
+      error: err.message
+    });
   }
 });
 

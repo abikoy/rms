@@ -27,19 +27,39 @@ const ResourceRequestForm = () => {
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   
   const { user } = useSelector(state => state.auth);
-  const [formNumber, setFormNumber] = useState(() => String(Math.floor(1000000 + Math.random() * 9000000)));
   const [currentDate] = useState(new Date().toISOString().split('T')[0]);
   const [error, setError] = useState('');
   
+  // Load selected resource from localStorage
+  useEffect(() => {
+    const selectedResource = JSON.parse(localStorage.getItem('selectedResource'));
+    if (selectedResource) {
+      setItems([{
+        itemNo: 1,
+        resource: selectedResource.resourceId,
+        description: selectedResource.description || '',
+        unitOfMeasure: selectedResource.unitOfMeasure || '',
+        quantityRequested: '1',
+        quantityIssued: '',
+        birr: selectedResource.price?.birr?.toString() || '0',
+        cents: selectedResource.price?.cents?.toString() || '0',
+        totalBirr: '',
+        totalCents: '',
+        remarks: ''
+      }]);
+    }
+  }, []);
+
   // Initialize items with empty default item
   const [items, setItems] = useState([{
     itemNo: 1,
+    resource: '',
     description: '',
     unitOfMeasure: '',
-    quantityRequested: '',
+    quantityRequested: '1',
     quantityIssued: '',
-    birr: '',
-    cents: '',
+    birr: '0',
+    cents: '0',
     totalBirr: '',
     totalCents: '',
     remarks: ''
@@ -57,6 +77,7 @@ const ResourceRequestForm = () => {
         
         setItems([{
           itemNo: 1,
+          resource: resource.resourceId,  // Set the resource ID
           description: resource.description || '',
           unitOfMeasure: resource.unitOfMeasure || '',
           quantityRequested: '',
@@ -198,12 +219,35 @@ const ResourceRequestForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Validate items
+      if (!items.length) {
+        setError('Please add at least one item to the request');
+        return;
+      }
+
+      // Validate required fields
+      for (const item of items) {
+        if (!item.resource) {
+          setError('Please select a resource from the Available Resources page first');
+          return;
+        }
+        if (!item.description || !item.unitOfMeasure) {
+          setError('Please fill in all required fields for each item');
+          return;
+        }
+        if (!item.quantityRequested || parseInt(item.quantityRequested) < 1) {
+          setError('Please enter a valid quantity (minimum 1) for each item');
+          return;
+        }
+      }
+
       const requestData = {
         items: items.map(item => ({
           itemNo: item.itemNo,
-          description: item.description,
-          unitOfMeasure: item.unitOfMeasure,
-          quantityRequested: parseInt(item.quantityRequested) || 0,
+          resource: item.resource,  // Include the resource ID
+          description: item.description.trim(),
+          unitOfMeasure: item.unitOfMeasure.trim(),
+          quantityRequested: parseInt(item.quantityRequested) || 1,
           price: {
             birr: parseInt(item.birr) || 0,
             cents: parseInt(item.cents) || 0
@@ -211,28 +255,47 @@ const ResourceRequestForm = () => {
           totalAmount: {
             birr: parseInt(item.totalBirr) || 0,
             cents: parseInt(item.totalCents) || 0
-          }
+          },
+          remarks: (item.remarks || '').trim()
         }))
       };
 
-      const response = await fetch(`${API_BASE_URL}/api/resource-requests`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': localStorage.getItem('token')
-        },
-        body: JSON.stringify(requestData)
-      });
+      // Clear any existing error
+      setError('');
 
-      const data = await response.json();
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/resource-requests`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': localStorage.getItem('token')
+          },
+          body: JSON.stringify(requestData)
+        });
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to submit request');
+        const data = await response.json();
+        console.log('Server response:', data);
+
+        if (!response.ok) {
+          if (data.errors) {
+            // Handle validation errors
+            const errorMessages = data.errors.map(err => 
+              `${err.field}: ${err.message}`
+            ).join('\n');
+            throw new Error(`Validation errors:\n${errorMessages}`);
+          } else {
+            throw new Error(data.message || data.error || 'Failed to submit request');
+          }
+        }
+
+        // Show success message and redirect
+        alert('Request submitted successfully and routed to your department head');
+        navigate('/staff/my-requests');
+      } catch (error) {
+        console.error('Error submitting request:', error);
+        setError(error.message || 'Failed to submit request. Please try again.');
+        return;
       }
-
-      // Show success message and redirect
-      alert('Request submitted successfully');
-      navigate('/staff/my-requests');
 
     } catch (error) {
       setError(error.message);
@@ -391,22 +454,6 @@ const ResourceRequestForm = () => {
           )}
 
           <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Form Number"
-                value={formNumber}
-                onChange={(e) => {
-                  if (validateNumericInput(e.target.value, 'Form Number')) {
-                    setFormNumber(e.target.value);
-                  }
-                }}
-                variant="outlined"
-                size="small"
-                error={error.includes('Form Number')}
-                helperText={error.includes('Form Number') ? error : ''}
-              />
-            </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth

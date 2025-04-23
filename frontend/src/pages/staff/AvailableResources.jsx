@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   Box,
   Container,
-  Dialog,
-  DialogContent,
   Typography,
   Grid,
   Card,
@@ -12,20 +10,18 @@ import {
   Button,
   CircularProgress,
   Paper,
-  Divider,
   Alert,
-  IconButton,
-  InputAdornment,
-  MenuItem,
+  TextField,
   FormControl,
   InputLabel,
   Select,
-  TextField,
+  MenuItem,
+  InputAdornment,
+  Divider,
 } from '@mui/material';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchResources } from '../../store/slices/resourceSlice';
-
 import DashboardLayout from '../../components/DashboardLayout';
 import {
   SearchOffOutlined as NoResourcesIcon,
@@ -33,21 +29,32 @@ import {
   FilterList as FilterIcon,
 } from '@mui/icons-material';
 
+// Price formatting helper
+const formatPrice = (price) => {
+  if (!price || (!price.birr && !price.cents)) return 'N/A';
+  const birr = price.birr || 0;
+  const cents = price.cents || 0;
+  return `${birr}.${cents.toString().padStart(2, '0')} ETB`;
+};
+
+// Field formatting helper
+const formatField = (value) => {
+  if (!value) return 'N/A';
+  return value.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+};
+
 const AvailableResources = () => {
   const navigate = useNavigate();
-
   const dispatch = useDispatch();
   const { user } = useSelector(state => state.auth);
   const { resources = [], loading, error } = useSelector(state => state.resources);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Check if user is authenticated
         if (!user || !localStorage.getItem('token')) {
           setErrorMessage('Please log in to view available resources');
           return;
@@ -55,104 +62,120 @@ const AvailableResources = () => {
 
         const result = await dispatch(fetchResources()).unwrap();
         if (result.status !== 'success') {
-          setErrorMessage(result.message || 'Failed to load resources');
+          setErrorMessage('Failed to load resources');
+          return;
+        }
+        
+        // Debug: Log the first resource to check its structure
+        if (result.data && result.data.length > 0) {
+          console.log('First resource from API:', result.data[0]);
         }
       } catch (error) {
+        console.error('Error loading resources:', error);
         setErrorMessage(error.message || 'Failed to load resources');
       }
     };
-
     loadData();
   }, [dispatch, user]);
-
-  // Filter for only unassigned and available resources
-  const availableResources = resources.filter(resource => 
-    !resource.assignedTo && 
-    resource.status === 'available'
-  );
-
-  // Define available resource types
-  const RESOURCE_TYPES = [
-    { value: 'fixed_assets', label: 'Fixed Asset' },
-    { value: 'non_fixed_assets', label: 'Non-Fixed Asset' }
-  ];
-
-  const filteredResources = availableResources.filter(resource => {
-    const matchesSearch = resource.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         resource.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         resource.location.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === 'all' || resource.type === filterType;
-    return matchesSearch && matchesType;
-  });
 
   const handleRequestResource = (resource) => {
     try {
       const resourceData = {
         description: resource.name,
         unitOfMeasure: resource.unitOfMeasure || 'pcs',
-        price: resource.price || 0,
+        price: {
+          birr: resource.price?.birr || resource.unitPrice?.birr || 0,
+          cents: resource.price?.cents || resource.unitPrice?.cents || 0
+        },
         resourceId: resource._id,
-        department: resource.department
+        managerType: resource.managerType
       };
       
-      // Save to localStorage
       localStorage.setItem('selectedResource', JSON.stringify(resourceData));
-      
-      // Navigate to request form
       navigate('/staff/request-resource');
     } catch (error) {
-      console.error('Error saving resource data:', error);
-      setErrorMessage('Failed to initiate resource request');
+      console.error('Error handling request:', error);
+      setErrorMessage('Failed to process resource request');
     }
   };
 
-  const renderResourceCard = (resource) => (
-    <Grid item xs={12} sm={6} md={4} key={resource._id}>
-      <Card 
-        elevation={3}
-        sx={{ 
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          transition: 'transform 0.2s',
-          '&:hover': {
-            transform: 'scale(1.02)',
-          }
-        }}
-      >
-        <CardContent sx={{ flexGrow: 1 }}>
-          <Typography variant="h6" gutterBottom>
-            {resource.name}
-          </Typography>
-          <Typography color="textSecondary" paragraph>
-            Type: {resource.type || 'N/A'}
-          </Typography>
-          <Typography color="textSecondary" paragraph>
-            Department: {resource.department || 'N/A'}
-          </Typography>
-          <Typography color="textSecondary" paragraph>
-            Unit: {resource.unitOfMeasure || 'pcs'}
-          </Typography>
-          <Typography color="textSecondary" paragraph>
-            Price: {resource.price ? `${resource.price} Birr` : 'N/A'}
-          </Typography>
-          <Typography color="textSecondary">
-            Status: {resource.status || 'Available'}
-          </Typography>
-        </CardContent>
-        <CardActions>
-          <Button
-            fullWidth
-            variant="contained"
-            color="primary"
-            onClick={() => handleRequestResource(resource)}
-          >
-            Request This Resource
-          </Button>
-        </CardActions>
-      </Card>
-    </Grid>
-  );
+  const renderResourceCard = (resource) => {
+    // Debug logging
+    console.log('Resource data:', {
+      id: resource._id,
+      name: resource.name,
+      managerType: resource.managerType,
+      price: resource.price,
+      status: resource.status
+    });
+
+    return (
+      <Grid item xs={12} sm={6} md={4} key={resource._id}>
+        <Card 
+          elevation={3}
+          sx={{ 
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            transition: 'transform 0.2s',
+            '&:hover': {
+              transform: 'scale(1.02)',
+            }
+          }}
+        >
+          <CardContent sx={{ flexGrow: 1 }}>
+            <Typography variant="h6" gutterBottom>
+              {resource.name}
+            </Typography>
+            <Typography color="textSecondary" gutterBottom>
+              Type: {formatField(resource.type)}
+            </Typography>
+            <Typography color="textSecondary" gutterBottom>
+              Asset Class: {formatField(resource.assetClass)}
+            </Typography>
+            <Typography 
+              color="textSecondary" 
+              gutterBottom
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}
+            >
+              <strong>Manager Type:</strong> {resource.managerType ? (
+                <span style={{ color: resource.managerType === 'DDU Asset Manager' ? '#1976d2' : '#2e7d32' }}>
+                  {resource.managerType}
+                </span>
+              ) : 'N/A'}
+            </Typography>
+            <Typography color="textSecondary" gutterBottom>
+              Location: {resource.location || 'N/A'}
+            </Typography>
+            <Typography color="textSecondary" gutterBottom>
+              Price: {formatPrice({
+                birr: resource.price?.birr || resource.unitPrice?.birr,
+                cents: resource.price?.cents || resource.unitPrice?.cents
+              })}
+            </Typography>
+            <Typography color="textSecondary">
+              Status: {resource.status ? resource.status.charAt(0).toUpperCase() + resource.status.slice(1) : 'N/A'}
+            </Typography>
+          </CardContent>
+          <CardActions>
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
+              onClick={() => handleRequestResource(resource)}
+              disabled={!resource.status || resource.status !== 'available'}
+            >
+              Request Resource
+            </Button>
+          </CardActions>
+        </Card>
+      </Grid>
+    );
+  };
 
   if (!user || !localStorage.getItem('token')) {
     return (
@@ -176,18 +199,32 @@ const AvailableResources = () => {
     );
   }
 
+  // Filter for only unassigned and available resources
+  const availableResources = resources.filter(resource => 
+    !resource.assignedTo && 
+    resource.status === 'available'
+  );
+
+  // Define available resource types
+  const RESOURCE_TYPES = [
+    { value: 'fixed_assets', label: 'Fixed Asset' },
+    { value: 'non_fixed_assets', label: 'Non-Fixed Asset' }
+  ];
+
+  const filteredResources = availableResources.filter(resource => {
+    const matchesSearch = resource.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         resource.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         resource.location.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = filterType === 'all' || resource.type === filterType;
+    return matchesSearch && matchesType;
+  });
+
   return (
     <DashboardLayout>
       <Container maxWidth="lg">
         {errorMessage && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMessage('')}>
             {errorMessage}
-          </Alert>
-        )}
-
-        {showSuccessAlert && (
-          <Alert severity="success" sx={{ mb: 2 }} onClose={() => setShowSuccessAlert(false)}>
-            Resource request submitted successfully!
           </Alert>
         )}
 

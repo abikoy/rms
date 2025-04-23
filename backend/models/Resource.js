@@ -50,6 +50,24 @@ const resourceSchema = new mongoose.Schema({
     enum: ['available', 'assigned', 'maintenance'],
     default: 'available'
   },
+  managerType: {
+    type: String,
+    required: true,
+    enum: ['DDU Asset Manager', 'IoT Asset Manager'],
+    default: 'DDU Asset Manager'
+  },
+  price: {
+    birr: {
+      type: Number,
+      required: true,
+      default: 0
+    },
+    cents: {
+      type: Number,
+      required: true,
+      default: 0
+    }
+  },
   quantity: {
     type: Number,
     required: true,

@@ -133,18 +133,28 @@ const resourceRequestSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Update the updatedAt timestamp before saving
-resourceRequestSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
-
-// Generate request number before saving
+// Generate request number and update timestamps before saving
 resourceRequestSchema.pre('save', async function(next) {
-  if (!this.requestNumber) {
-    const count = await this.constructor.countDocuments();
-    this.requestNumber = String(9087 + count).padStart(7, '0');
+  // Update timestamps
+  const now = Date.now();
+  this.updatedAt = now;
+  if (!this.createdAt) {
+    this.createdAt = now;
   }
+
+  // Generate request number if not set
+  if (!this.requestNumber) {
+    try {
+      const count = await this.constructor.countDocuments();
+      const timestamp = Date.now().toString().slice(-6);
+      this.requestNumber = `REQ-${timestamp}-${String(count + 1).padStart(4, '0')}`;
+    } catch (error) {
+      console.error('Error generating request number:', error);
+      next(error);
+      return;
+    }
+  }
+
   next();
 });
 
