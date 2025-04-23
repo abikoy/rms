@@ -13,28 +13,28 @@ const resourceSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['consumable_resources', 'non_consumable_resources']
+    enum: ['fixed_assets', 'non_fixed_assets']
   },
   assetClass: {
     type: String,
     required: true,
     enum: [
-      // Consumable Resources
-      'STATIONERY',
-      'CLEANING_SUPPLIES',
-      'FUEL',
-      'FOOD_ITEMS',
-      'MAINTENANCE_SUPPLIES',
-      'TEACHING_MATERIALS',
-      'MEDICAL_SUPPLIES',
-      // Non-Consumable Resources
+      // Fixed Assets
       'OFFICE_FURNITURE',
       'IT_EQUIPMENT',
       'AV_EQUIPMENT',
       'LAB_EQUIPMENT',
       'MACHINERY_TOOLS',
       'VEHICLES',
-      'BUILDINGS'
+      'BUILDINGS',
+      // Non-Fixed Assets
+      'STATIONERY',
+      'CLEANING_SUPPLIES',
+      'FUEL',
+      'FOOD_ITEMS',
+      'MAINTENANCE_SUPPLIES',
+      'TEACHING_MATERIALS',
+      'MEDICAL_SUPPLIES'
     ]
   },
   model: {
@@ -47,7 +47,7 @@ const resourceSchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    enum: ['available', 'in_use', 'maintenance'],
+    enum: ['available', 'assigned', 'maintenance'],
     default: 'available'
   },
   quantity: {

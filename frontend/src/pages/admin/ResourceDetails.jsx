@@ -115,8 +115,8 @@ const ResourceDetails = () => {
                     Asset Type
                   </Typography>
                   <Chip
-                    label={resource.type === 'consumable_resources' ? 'Consumable' : 'Non-Consumable'}
-                    color={resource.type === 'consumable_resources' ? 'primary' : 'secondary'}
+                    label={resource.type === 'non_fixed_assets' ? 'Non-Fixed Asset' : 'Fixed Asset'}
+                    color={resource.type === 'non_fixed_assets' ? 'primary' : 'secondary'}
                     size="small"
                     sx={{ mt: 1 }}
                   />
@@ -130,7 +130,7 @@ const ResourceDetails = () => {
                     color={
                       resource.status === 'available'
                         ? 'success'
-                        : resource.status === 'in_use'
+                        : resource.status === 'assigned'
                         ? 'warning'
                         : 'error'
                     }

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { DEPARTMENTS_LIST } = require('../constants/departments');
 
 // Get all users
 router.get('/users', auth, async (req, res) => {
@@ -97,6 +98,14 @@ router.put('/users/:userId', auth, async (req, res) => {
       });
     }
 
+    // Validate department if provided
+    if (department && !DEPARTMENTS_LIST.includes(department)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid department. Must be one of: ' + DEPARTMENTS_LIST.join(', ')
+      });
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       req.params.userId,
       {
@@ -154,7 +163,16 @@ router.get('/pending-users', auth, async (req, res) => {
       });
     }
 
-    const pendingUsers = await User.find({ status: 'pending' })
+    // Get department filter from query params
+    const { department } = req.query;
+    
+    // Build query
+    const query = { status: 'pending' };
+    if (department && DEPARTMENTS_LIST.includes(department)) {
+      query.department = department;
+    }
+
+    const pendingUsers = await User.find(query)
       .select('-password')
       .sort({ createdAt: -1 });
 
@@ -185,7 +203,15 @@ router.get('/approved-users', auth, async (req, res) => {
       });
     }
 
-    const approvedUsers = await User.find({ status: 'approved' })
+    const { department } = req.query;
+    
+    // Build query
+    const query = { status: 'approved' };
+    if (department && DEPARTMENTS_LIST.includes(department)) {
+      query.department = department;
+    }
+
+    const approvedUsers = await User.find(query)
       .select('-password')
       .sort({ createdAt: -1 });
 
@@ -204,14 +230,14 @@ router.get('/approved-users', auth, async (req, res) => {
   }
 });
 
-// Approve or reject a user
+// Update user status (approve/reject)
 router.put('/users/:userId/status', auth, async (req, res) => {
   try {
     // Check if the requesting user is a system_admin
     if (req.user.role !== 'system_admin') {
       return res.status(403).json({
         success: false,
-        message: 'Access denied. Only system administrators can approve/reject users.'
+        message: 'Access denied. Only system administrators can update user status.'
       });
     }
 

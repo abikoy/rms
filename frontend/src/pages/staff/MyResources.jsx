@@ -85,7 +85,7 @@ const MyResources = () => {
               color="primary"
               size="large"
               startIcon={<RequestIcon />}
-              onClick={() => navigate('/staff/available-resources')}
+              onClick={() => navigate('/staff/request-resource')}
               sx={{ 
                 minWidth: 200,
                 height: 48,
@@ -146,7 +146,7 @@ const MyResources = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <CategoryIcon sx={{ fontSize: 20, mr: 1, color: 'text.secondary' }} />
                         <Typography color="textSecondary">
-                          Type: {resource.type === 'consumable_resources' ? 'Consumable' : 'Non-Consumable'}
+                          Type: {resource.type === 'non_fixed_assets' ? 'Non-Fixed Asset' : 'Fixed Asset'}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>

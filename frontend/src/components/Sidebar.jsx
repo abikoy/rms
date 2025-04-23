@@ -26,6 +26,7 @@ import {
   Group as GroupIcon,
   AccountCircle as ProfileIcon,
   ExitToApp as LogoutIcon,
+  SwapHoriz,
 } from '@mui/icons-material';
 
 const drawerWidth = 250;
@@ -93,6 +94,34 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
           },
         ];
       
+      case 'department_head':
+        return [
+          {
+            text: 'Dashboard',
+            icon: <DashboardIcon />,
+            path: '/department-head/dashboard',
+            section: 'main'
+          },
+          {
+            text: 'Department Resources',
+            icon: <ResourcesIcon />,
+            path: '/department-head/resources',
+            section: 'main'
+          },
+          {
+            text: 'Pending Requests',
+            icon: <SwapHoriz />,
+            path: '/department-head/pending-requests',
+            section: 'main'
+          },
+          {
+            text: 'Settings',
+            icon: <SettingsIcon />,
+            path: '/department-head/settings',
+            section: 'bottom'
+          }
+        ];
+      
       case 'ddu_asset_manager':
       case 'iot_asset_manager':
       case 'school_dean':
@@ -103,6 +132,41 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
             icon: <ResourcesIcon />,
             path: '/resources/transfer',
           },
+        ];
+      
+      case 'staff':
+        return [
+          {
+            text: 'Dashboard',
+            icon: <DashboardIcon />,
+            path: '/staff/dashboard',
+            section: 'main'
+          },
+          {
+            text: 'My Resources',
+            icon: <ResourcesIcon />,
+            path: '/staff/my-resources',
+            section: 'main'
+          },
+          {
+            text: 'Available Resources',
+            icon: <ResourcesIcon />,
+            path: '/staff/available-resources',
+            section: 'main'
+          },
+          {
+            text: 'Transfer Resources',
+            icon: <SwapHoriz />,
+            path: '/staff/transfer-resources',
+            section: 'main'
+          },
+          {
+            text: 'Settings',
+            icon: <SettingsIcon />,
+            path: '/staff/settings',
+            section: 'bottom'
+          },
+          
         ];
       
       default:
@@ -212,7 +276,7 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
               // Regular menu item
               <ListItem disablePadding>
                 <ListItemButton
-                  onClick={() => navigate(item.path)}
+                  onClick={item.onClick ? item.onClick : () => navigate(item.path)}
                   sx={{
                     minHeight: 48,
                     px: 2.5,

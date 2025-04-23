@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { DEPARTMENTS_LIST } = require('../constants/departments');
 
 // Clear any existing indexes
 mongoose.connection.on('connected', async () => {
@@ -48,14 +49,9 @@ const userSchema = new mongoose.Schema({
     required: function() {
       return ['staff', 'department_head'].includes(this.role);
     },
-    validate: {
-      validator: function(v) {
-        if (['staff', 'department_head'].includes(this.role)) {
-          return v && v.trim().length > 0;
-        }
-        return true;
-      },
-      message: 'Department is required for Staff and Department Head roles'
+    enum: {
+      values: DEPARTMENTS_LIST,
+      message: '{VALUE} is not a valid department'
     },
     trim: true
   },
@@ -81,11 +77,6 @@ const userSchema = new mongoose.Schema({
   },
   profilePhoto: {
     type: String
-  },
-  status: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected'],
-    default: 'pending'
   },
   createdAt: {
     type: Date,

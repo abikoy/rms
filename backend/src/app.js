@@ -12,26 +12,28 @@ const AppError = require('./utils/appError');
 const authRoutes = require('../routes/auth');
 const adminRoutes = require('../routes/admin');
 const resourceRoutes = require('../routes/resource');
+const resourceRequestRoutes = require('../routes/resourceRequests');
 
 const app = express();
 
 // Enable CORS with proper configuration
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: ['http://localhost:3000', 'http://localhost:3001'],  // Allow both default ports
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
   exposedHeaders: ['x-auth-token'],
   credentials: true
 }));
 
+// Handle preflight requests
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-auth-token');
+  next();
+});
+
 // Handle OPTIONS preflight
-app.options('*', cors({
-  origin: 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
-  exposedHeaders: ['x-auth-token'],
-  credentials: true
-}));
+app.options('*', cors());
 
 // Set security HTTP headers with proper configuration for image serving
 app.use(
@@ -70,24 +72,18 @@ app.use(mongoSanitize());
 app.use(xss());
 
 // Serve static files
-const uploadsPath = path.join(__dirname, '..', 'uploads');
-console.log('Serving uploads from:', uploadsPath);
-app.use('/uploads', express.static(uploadsPath));
-
-// Serve public files
-const publicPath = path.join(__dirname, '..', 'public');
-console.log('Serving public files from:', publicPath);
-app.use(express.static(publicPath));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '..', 'uploads', 'profiles');
+const uploadsDir = path.join(__dirname, 'uploads', 'profile-images');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
 // Copy default avatar if it doesn't exist
-const defaultAvatarSrc = path.join(__dirname, '..', 'public', 'default-avatar.png');
-const defaultAvatarDest = path.join(uploadsDir, 'default-avatar.png');
+const defaultAvatarSrc = path.join(__dirname, 'public', 'default-avatar.jpg');
+const defaultAvatarDest = path.join(uploadsDir, 'default-avatar.jpg');
 if (!fs.existsSync(defaultAvatarDest) && fs.existsSync(defaultAvatarSrc)) {
   fs.copyFileSync(defaultAvatarSrc, defaultAvatarDest);
 }
@@ -96,6 +92,7 @@ if (!fs.existsSync(defaultAvatarDest) && fs.existsSync(defaultAvatarSrc)) {
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/resources', resourceRoutes);
+app.use('/api/resource-requests', resourceRequestRoutes);
 
 // Handle undefined routes
 app.all('*', (req, res, next) => {

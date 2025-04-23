@@ -272,8 +272,8 @@ const EditResource = () => {
                     onChange={handleChange}
                     label="Asset Type"
                   >
-                    <MenuItem value="consumable_resources">Consumable</MenuItem>
-                    <MenuItem value="non_consumable_resources">Non-Consumable</MenuItem>
+                    <MenuItem value="fixed_assets">Fixed Assets</MenuItem>
+                    <MenuItem value="non_fixed_assets">Non-Fixed Assets</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -316,7 +316,7 @@ const EditResource = () => {
                     label="Status"
                   >
                     <MenuItem value="available">Available</MenuItem>
-                    <MenuItem value="in_use">In Use</MenuItem>
+                    <MenuItem value="assigned">Assigned</MenuItem>
                     <MenuItem value="maintenance">Maintenance</MenuItem>
                   </Select>
                 </FormControl>

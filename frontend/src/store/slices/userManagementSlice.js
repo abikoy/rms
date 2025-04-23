@@ -5,9 +5,14 @@ import { endpoints } from '../../config/api';
 // Get pending users
 export const getPendingUsers = createAsyncThunk(
   'userManagement/getPendingUsers',
-  async (_, { rejectWithValue }) => {
+  async (filters = {}, { rejectWithValue }) => {
     try {
-      const response = await axios.get(endpoints.admin.pendingUsers);
+      const params = new URLSearchParams();
+      if (filters.department) {
+        params.append('department', filters.department);
+      }
+      
+      const response = await axios.get(`${endpoints.admin.pendingUsers}?${params.toString()}`);
       console.log('Pending users response:', response.data);
       if (response.data.success) {
         return response.data;
@@ -23,9 +28,14 @@ export const getPendingUsers = createAsyncThunk(
 // Get approved users
 export const getApprovedUsers = createAsyncThunk(
   'userManagement/getApprovedUsers',
-  async (_, { rejectWithValue }) => {
+  async (filters = {}, { rejectWithValue }) => {
     try {
-      const response = await axios.get(endpoints.admin.approvedUsers);
+      const params = new URLSearchParams();
+      if (filters.department) {
+        params.append('department', filters.department);
+      }
+      
+      const response = await axios.get(`${endpoints.admin.approvedUsers}?${params.toString()}`);
       console.log('Approved users response:', response.data);
       if (response.data.success) {
         return response.data;

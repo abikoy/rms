@@ -299,8 +299,8 @@ const AssetRegistrationForm = ({ assetManagerType }) => {
                 onChange={handleChange}
                 label="Asset Type"
               >
-                <MenuItem value="consumable_resources">Consumable Resources</MenuItem>
-                <MenuItem value="non_consumable_resources">Non-Consumable Resources</MenuItem>
+                <MenuItem value="fixed_assets">Fixed Assets</MenuItem>
+                <MenuItem value="non_fixed_assets">Non-Fixed Assets</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -314,7 +314,7 @@ const AssetRegistrationForm = ({ assetManagerType }) => {
                 label="Asset Class"
                 disabled={!formData.assetType}
               >
-                {formData.assetType === 'consumable_resources' && [
+                {formData.assetType === 'non_fixed_assets' && [
                   { value: 'STATIONERY', label: 'Stationery' },
                   { value: 'CLEANING_SUPPLIES', label: 'Cleaning Supplies' },
                   { value: 'FUEL', label: 'Fuel' },
@@ -325,7 +325,7 @@ const AssetRegistrationForm = ({ assetManagerType }) => {
                 ].map(option => (
                   <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
                 ))}
-                {formData.assetType === 'non_consumable_resources' && [
+                {formData.assetType === 'fixed_assets' && [
                   { value: 'OFFICE_FURNITURE', label: 'Office Furniture' },
                   { value: 'IT_EQUIPMENT', label: 'Information Technology Equipment' },
                   { value: 'AV_EQUIPMENT', label: 'Audio-Visual Equipment' },

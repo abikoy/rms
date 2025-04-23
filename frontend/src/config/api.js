@@ -17,6 +17,13 @@ export const endpoints = {
     list: `${API_URL}/resources`,
     transfer: `${API_URL}/resources/transfer`,
     byDepartment: (dept) => `${API_URL}/resources/department/${dept}`,
+  },
+  staff: {
+    resourceRequests: `${API_URL}/resource-requests`,
+    myRequests: `${API_URL}/resource-requests/my-requests`,
+  },
+  departmentHead: {
+    assignedRequests: `${API_URL}/resource-requests/assigned-requests`
   }
 };
 

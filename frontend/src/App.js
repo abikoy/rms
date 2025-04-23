@@ -31,7 +31,10 @@ import AddIoTAsset from './pages/asset-managers/iot/AddIoTAsset';
 import AddDDUAsset from './pages/asset-managers/ddu/AddDDUAsset';
 import MyResources from './pages/staff/MyResources';
 import AvailableResources from './pages/staff/AvailableResources';
+import ResourceRequestForm from './pages/staff/ResourceRequestForm';
 import StaffSettings from './pages/staff/Settings';
+import DepartmentResources from './pages/department-head/DepartmentResources';
+import PendingRequests from './pages/department-head/PendingRequests';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -97,47 +100,54 @@ const AppContent = () => {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/resources/transfer" element={<TransferResources />} />
-        <Route path="/signup" element={<SignUp />} />
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/resources/transfer" element={<TransferResources />} />
+      <Route path="/signup" element={<SignUp />} />
 
-        {/* Protected Routes */}
-        <Route path="/dashboard" element={<ProtectedRoute>{getDashboardComponent()}</ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        
-        {/* Admin Routes */}
-        <Route path="/users/management" element={<AdminRoute><UserManagement /></AdminRoute>} />
-        <Route path="/users/registration" element={<AdminRoute><UserRegistration /></AdminRoute>} />
-        <Route path="/resources" element={<AdminRoute><Resources /></AdminRoute>} />
-        <Route path="/resources/:id" element={<AdminRoute><ResourceDetails /></AdminRoute>} />
-        <Route path="/resources/:id/edit" element={<AdminRoute><EditResource /></AdminRoute>} />
-        <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
-        <Route path="/asset-managers/iot/add" element={<AdminRoute><AddIoTAsset /></AdminRoute>} />
-        <Route path="/asset-managers/ddu/add" element={<AdminRoute><AddDDUAsset /></AdminRoute>} />
+      {/* Protected Routes */}
+      <Route path="/dashboard" element={<ProtectedRoute>{getDashboardComponent()}</ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      
+      {/* Admin Routes */}
+      <Route path="/users/management" element={<AdminRoute><UserManagement /></AdminRoute>} />
+      <Route path="/users/registration" element={<AdminRoute><UserRegistration /></AdminRoute>} />
+      <Route path="/resources" element={<AdminRoute><Resources /></AdminRoute>} />
+      <Route path="/resources/:id" element={<AdminRoute><ResourceDetails /></AdminRoute>} />
+      <Route path="/resources/:id/edit" element={<AdminRoute><EditResource /></AdminRoute>} />
+      <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+      <Route path="/asset-managers/iot/add" element={<AdminRoute><AddIoTAsset /></AdminRoute>} />
+      <Route path="/asset-managers/ddu/add" element={<AdminRoute><AddDDUAsset /></AdminRoute>} />
 
-        {/* Staff Routes */}
-        <Route path="/staff/dashboard" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
-        <Route path="/staff/my-resources" element={<StaffRoute><MyResources /></StaffRoute>} />
-        <Route path="/staff/available-resources" element={<StaffRoute><AvailableResources /></StaffRoute>} />
-        <Route path="/staff/transfer-resources" element={<StaffRoute><TransferResources /></StaffRoute>} />
-        <Route path="/staff/settings" element={<StaffRoute><StaffSettings /></StaffRoute>} />
+      {/* Staff Routes */}
+      <Route path="/staff/dashboard" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
+      <Route path="/staff/my-resources" element={<StaffRoute><MyResources /></StaffRoute>} />
+      <Route path="/staff/available-resources" element={<StaffRoute><AvailableResources /></StaffRoute>} />
+      <Route path="/staff/request-resource" element={<StaffRoute><ResourceRequestForm /></StaffRoute>} />
+      <Route path="/staff/transfer-resources" element={<StaffRoute><TransferResources /></StaffRoute>} />
+      <Route path="/staff/settings" element={<StaffRoute><StaffSettings /></StaffRoute>} />
 
-        {/* Catch-all route for 404 */}
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </ThemeProvider>
+      {/* Department Head Routes */}
+      <Route path="/department-head/dashboard" element={<ProtectedRoute><DepartmentHeadDashboard /></ProtectedRoute>} />
+      <Route path="/department-head/resources" element={<ProtectedRoute><DepartmentResources /></ProtectedRoute>} />
+      <Route path="/department-head/pending-requests" element={<ProtectedRoute><PendingRequests /></ProtectedRoute>} />
+      <Route path="/department-head/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
+      {/* Catch-all route for 404 */}
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
   );
 };
 
 const App = () => {
   return (
     <Provider store={store}>
-      <AppContent />
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AppContent />
+      </ThemeProvider>
     </Provider>
   );
 };

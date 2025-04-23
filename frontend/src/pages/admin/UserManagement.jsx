@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import DashboardLayout from '../../components/DashboardLayout';
+import DepartmentSelect from '../../components/DepartmentSelect';
 import {
   Box,
   Tab,
@@ -52,20 +53,19 @@ const UserManagement = () => {
   const [activeTab, setActiveTab] = useState(0);
   const { pendingUsers, approvedUsers, loading: usersLoading, error } = useSelector((state) => state.userManagement);
 
+  // Fetch users based on active tab
+  const fetchUsers = () => {
+    if (activeTab === 0) {
+      dispatch(getPendingUsers({ department: filterDepartment }));
+    } else {
+      dispatch(getApprovedUsers({ department: filterDepartment }));
+    }
+  };
+
+  // Effect to fetch users when tab changes or filters change
   useEffect(() => {
-    console.log('Fetching users...');
-    const fetchUsers = async () => {
-      try {
-        await Promise.all([
-          dispatch(getPendingUsers()),
-          dispatch(getApprovedUsers())
-        ]);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-      }
-    };
     fetchUsers();
-  }, [dispatch]);
+  }, [activeTab, filterDepartment]);
 
   useEffect(() => {
     const filteredUsers = (activeTab === 0 ? pendingUsers : approvedUsers) || [];
@@ -75,6 +75,11 @@ const UserManagement = () => {
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
     setPage(0); // Reset to first page when switching tabs
+  };
+
+  const handleDepartmentChange = (event) => {
+    setFilterDepartment(event.target.value);
+    setPage(0);
   };
 
   // Dialog states
@@ -324,6 +329,7 @@ const UserManagement = () => {
     if (searchQuery) {
       filteredUsers = filteredUsers.filter(user =>
         user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         user.department?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
@@ -379,20 +385,14 @@ const UserManagement = () => {
               />
             </Grid>
             <Grid item xs={12} sm={4} md={4}>
-              <FormControl fullWidth size={isMobile ? 'small' : 'medium'} sx={{ mb: isMobile ? 1 : 0 }}>
-                <InputLabel>Department</InputLabel>
-                <Select
-                  value={filterDepartment}
-                  label="Department"
-                  onChange={(e) => setFilterDepartment(e.target.value)}
-                >
-                  <MenuItem value="">All</MenuItem>
-                  <MenuItem value="ICT">ICT</MenuItem>
-                  <MenuItem value="Engineering">Engineering</MenuItem>
-                  <MenuItem value="Business">Business</MenuItem>
-                  {/* Add more departments as needed */}
-                </Select>
-              </FormControl>
+              <DepartmentSelect
+                value={filterDepartment}
+                onChange={handleDepartmentChange}
+                size={isMobile ? 'small' : 'medium'}
+                fullWidth
+              >
+                <MenuItem value="">All Departments</MenuItem>
+              </DepartmentSelect>
             </Grid>
             <Grid item xs={12} sm={4} md={4}>
               <FormControl fullWidth size={isMobile ? 'small' : 'medium'}>

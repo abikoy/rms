@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
   Box,
   Container,
+  Dialog,
+  DialogContent,
   Typography,
   Grid,
   Card,
@@ -23,6 +25,7 @@ import {
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchResources } from '../../store/slices/resourceSlice';
+
 import DashboardLayout from '../../components/DashboardLayout';
 import {
   SearchOffOutlined as NoResourcesIcon,
@@ -31,8 +34,9 @@ import {
 } from '@mui/icons-material';
 
 const AvailableResources = () => {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const dispatch = useDispatch();
   const { user } = useSelector(state => state.auth);
   const { resources = [], loading, error } = useSelector(state => state.resources);
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,6 +71,12 @@ const AvailableResources = () => {
     resource.status === 'available'
   );
 
+  // Define available resource types
+  const RESOURCE_TYPES = [
+    { value: 'fixed_assets', label: 'Fixed Asset' },
+    { value: 'non_fixed_assets', label: 'Non-Fixed Asset' }
+  ];
+
   const filteredResources = availableResources.filter(resource => {
     const matchesSearch = resource.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          resource.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -75,11 +85,74 @@ const AvailableResources = () => {
     return matchesSearch && matchesType;
   });
 
-  const resourceTypes = [...new Set(availableResources.map(resource => resource.type))];
-
-  const handleRequestClick = (resource) => {
-    navigate(`/staff/request-resource/${resource._id}`);
+  const handleRequestResource = (resource) => {
+    try {
+      const resourceData = {
+        description: resource.name,
+        unitOfMeasure: resource.unitOfMeasure || 'pcs',
+        price: resource.price || 0,
+        resourceId: resource._id,
+        department: resource.department
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('selectedResource', JSON.stringify(resourceData));
+      
+      // Navigate to request form
+      navigate('/staff/request-resource');
+    } catch (error) {
+      console.error('Error saving resource data:', error);
+      setErrorMessage('Failed to initiate resource request');
+    }
   };
+
+  const renderResourceCard = (resource) => (
+    <Grid item xs={12} sm={6} md={4} key={resource._id}>
+      <Card 
+        elevation={3}
+        sx={{ 
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          transition: 'transform 0.2s',
+          '&:hover': {
+            transform: 'scale(1.02)',
+          }
+        }}
+      >
+        <CardContent sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" gutterBottom>
+            {resource.name}
+          </Typography>
+          <Typography color="textSecondary" paragraph>
+            Type: {resource.type || 'N/A'}
+          </Typography>
+          <Typography color="textSecondary" paragraph>
+            Department: {resource.department || 'N/A'}
+          </Typography>
+          <Typography color="textSecondary" paragraph>
+            Unit: {resource.unitOfMeasure || 'pcs'}
+          </Typography>
+          <Typography color="textSecondary" paragraph>
+            Price: {resource.price ? `${resource.price} Birr` : 'N/A'}
+          </Typography>
+          <Typography color="textSecondary">
+            Status: {resource.status || 'Available'}
+          </Typography>
+        </CardContent>
+        <CardActions>
+          <Button
+            fullWidth
+            variant="contained"
+            color="primary"
+            onClick={() => handleRequestResource(resource)}
+          >
+            Request This Resource
+          </Button>
+        </CardActions>
+      </Card>
+    </Grid>
+  );
 
   if (!user || !localStorage.getItem('token')) {
     return (
@@ -150,9 +223,9 @@ const AvailableResources = () => {
               onChange={(e) => setFilterType(e.target.value)}
             >
               <MenuItem value="all">All Types</MenuItem>
-              {resourceTypes.map(type => (
-                <MenuItem key={type} value={type}>
-                  {type === 'consumable_resources' ? 'Consumable' : 'Non-Consumable'}
+              {RESOURCE_TYPES.map(type => (
+                <MenuItem key={type.value} value={type.value}>
+                  {type.label}
                 </MenuItem>
               ))}
             </Select>
@@ -185,51 +258,7 @@ const AvailableResources = () => {
           </Paper>
         ) : (
           <Grid container spacing={3}>
-            {filteredResources.map((resource) => (
-              <Grid item xs={12} sm={6} md={4} key={resource._id}>
-                <Card
-                  sx={{
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    bgcolor: 'background.paper',
-                    '&:hover': {
-                      boxShadow: 6,
-                    },
-                  }}
-                >
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6" gutterBottom>
-                      {resource.name}
-                    </Typography>
-                    <Box sx={{ mb: 2 }}>
-                      <Typography color="textSecondary" gutterBottom>
-                        Type: {resource.type === 'consumable_resources' ? 'Consumable' : 'Non-Consumable'}
-                      </Typography>
-                      <Typography color="textSecondary" gutterBottom>
-                        Status: {resource.status}
-                      </Typography>
-                      <Typography color="textSecondary">
-                        Location: {resource.location}
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                  <CardActions sx={{ p: 2, pt: 0 }}>
-                    <Button size="small" color="primary">
-                      View Details
-                    </Button>
-                    <Button 
-                      size="small" 
-                      variant="contained" 
-                      color="primary"
-                      onClick={() => handleRequestClick(resource)}
-                    >
-                      Request Resource
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
+            {filteredResources.map(resource => renderResourceCard(resource))}
           </Grid>
         )}
       </Container>

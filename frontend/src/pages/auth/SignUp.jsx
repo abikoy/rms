@@ -21,6 +21,7 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { register } from '../../store/slices/authSlice';
+import DepartmentSelect from '../../components/DepartmentSelect';
 
 function SignUp() {
   const theme = useTheme();
@@ -112,6 +113,13 @@ function SignUp() {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
+    });
+  };
+
+  const handleInputChange = (name, value) => {
+    setFormData({
+      ...formData,
+      [name]: value
     });
   };
 
@@ -292,14 +300,12 @@ function SignUp() {
 
                 {['staff', 'department_head'].includes(formData.role) && (
                   <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      name="department"
-                      label="Department"
+                    <DepartmentSelect
                       value={formData.department}
-                      onChange={handleChange}
+                      onChange={(e) => handleInputChange('department', e.target.value)}
+                      error={!!error && !formData.department}
+                      helperText={error && !formData.department ? 'Department is required' : ''}
                       required
-                      sx={{ mb: { xs: 1, md: 2 } }}
                     />
                   </Grid>
                 )}

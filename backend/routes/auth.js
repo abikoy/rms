@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { DEPARTMENTS_LIST } = require('../constants/departments');
 
 // @route   POST api/auth/register
 // @desc    Register user
@@ -40,6 +41,14 @@ router.put('/users/:userId', auth, async (req, res) => {
     }
     if (['staff', 'department_head'].includes(role) && !department) {
       return res.status(400).json({ message: 'Department is required for Staff and Department Head roles' });
+    }
+
+    // Validate department if provided
+    if (department && !DEPARTMENTS_LIST.includes(department)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid department. Must be one of: ' + DEPARTMENTS_LIST.join(', ')
+      });
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -108,6 +117,14 @@ router.post('/register', async (req, res) => {
     // Hash password before saving
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Validate department if provided
+    if (department && !DEPARTMENTS_LIST.includes(department)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid department. Must be one of: ' + DEPARTMENTS_LIST.join(', ')
+      });
+    }
 
     // Create new user with all fields
     const newUser = new User({
@@ -256,6 +273,14 @@ router.put('/profile', auth, async (req, res) => {
       if (existingUser) {
         return res.status(400).json({ message: 'Email already in use' });
       }
+    }
+
+    // Validate department if provided
+    if (department && !DEPARTMENTS_LIST.includes(department)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid department. Must be one of: ' + DEPARTMENTS_LIST.join(', ')
+      });
     }
 
     // Update fields

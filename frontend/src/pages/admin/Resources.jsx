@@ -22,7 +22,9 @@ import {
   CircularProgress,
   Alert,
   Chip,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogContent
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -30,6 +32,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DashboardLayout from '../../components/DashboardLayout';
 import { fetchResources, deleteResource } from '../../store/slices/resourceSlice';
+import ResourceRequestForm from '../staff/ResourceRequestForm';
 
 const Resources = () => {
   const navigate = useNavigate();
@@ -38,6 +41,8 @@ const Resources = () => {
   const userRole = useSelector((state) => state.auth.user?.role);
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedResource, setSelectedResource] = useState(null);
+  const [showRequestForm, setShowRequestForm] = useState(false);
   const [assetType, setAssetType] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(0);
@@ -85,6 +90,11 @@ const Resources = () => {
         console.error('Failed to delete resource:', error);
       }
     }
+  };
+
+  const handleRequestClick = (resource) => {
+    setSelectedResource(resource);
+    setShowRequestForm(true);
   };
 
   const filteredResourcesList = resources
@@ -153,10 +163,9 @@ const Resources = () => {
               label="Asset Type"
               onChange={handleAssetTypeChange}
             >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="consumable_resources">Consumable resources</MenuItem>
-              <MenuItem value="non_consumable_resources">Non-consumable resources</MenuItem>
-              
+              <MenuItem value="all">All resources</MenuItem>
+              <MenuItem value="fixed_assets">Fixed Assets</MenuItem>
+              <MenuItem value="non_fixed_assets">Non-Fixed Assets</MenuItem>
             </Select>
           </FormControl>
           <FormControl size="small" sx={{ minWidth: 200 }}>
@@ -168,7 +177,7 @@ const Resources = () => {
             >
               <MenuItem value="">All</MenuItem>
               <MenuItem value="available">Available</MenuItem>
-              <MenuItem value="in_use">In Use</MenuItem>
+              <MenuItem value="assigned">Assigned</MenuItem>
               <MenuItem value="maintenance">Maintenance</MenuItem>
             </Select>
           </FormControl>
@@ -202,8 +211,8 @@ const Resources = () => {
                     <TableCell>{resource.serialNumber}</TableCell>
                     <TableCell>
                       <Chip
-                        label={resource.type === 'consumable_resources' ? 'Consumable' : 'Non-Consumable'}
-                        color={resource.type === 'consumable_resources' ? 'primary' : 'secondary'}
+                        label={resource.type === 'non_fixed_assets' ? 'Non-Fixed Asset' : 'Fixed Asset'}
+                        color={resource.type === 'non_fixed_assets' ? 'primary' : 'secondary'}
                         size="small"
                       />
                     </TableCell>
@@ -213,7 +222,7 @@ const Resources = () => {
                       <Chip
                         label={resource.status}
                         color={resource.status === 'available' ? 'success' : 
-                               resource.status === 'in_use' ? 'warning' : 'error'}
+                               resource.status === 'assigned' ? 'warning' : 'error'}
                         size="small"
                       />
                     </TableCell>
@@ -254,6 +263,15 @@ const Resources = () => {
                                 <DeleteIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
+                            <Tooltip title="Request">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleRequestClick(resource)}
+                              >
+                                <AddIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                           </>
                         )}
                       </Box>
@@ -274,6 +292,23 @@ const Resources = () => {
           />
         </TableContainer>
       </Box>
+
+      {/* Resource Request Dialog */}
+      {showRequestForm && (
+        <Dialog
+          open={showRequestForm}
+          onClose={() => setShowRequestForm(false)}
+          maxWidth="lg"
+          fullWidth
+        >
+          <DialogContent>
+            <ResourceRequestForm
+              resource={selectedResource}
+              onClose={() => setShowRequestForm(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </DashboardLayout>
   );
 };

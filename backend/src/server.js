@@ -4,7 +4,15 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
+const resourceRoutes = require('../routes/resource');
+const resourceRequestRoutes = require('../routes/resourceRequests');
+const userRoutes = require('../routes/user');
+
 const app = require('./app');
+
+app.use('/api/resources', resourceRoutes);
+app.use('/api/resource-requests', resourceRequestRoutes);
+app.use('/api/users', userRoutes);
 
 process.on('uncaughtException', err => {
   console.log('UNCAUGHT EXCEPTION! 💥 Shutting down...');

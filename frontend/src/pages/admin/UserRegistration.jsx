@@ -14,6 +14,7 @@ import {
   Grid,
 } from '@mui/material';
 import DashboardLayout from '../../components/DashboardLayout';
+import DepartmentSelect from '../../components/DepartmentSelect';
 import axios from 'axios';
 import { endpoints } from '../../config/api';
 
@@ -202,20 +203,11 @@ const UserRegistration = () => {
                 </Grid>
                 {shouldShowDepartment && (
                   <Grid item xs={12} md={6}>
-                    <FormControl fullWidth required>
-                      <InputLabel>Department</InputLabel>
-                      <Select
-                        name="department"
-                        value={formData.department}
-                        onChange={handleChange}
-                        label="Department"
-                      >
-                        <MenuItem value="cs">Computer Science</MenuItem>
-                        <MenuItem value="it">Information Technology</MenuItem>
-                        <MenuItem value="se">Software Engineering</MenuItem>
-                        {/* Add more departments as needed */}
-                      </Select>
-                    </FormControl>
+                    <DepartmentSelect
+                      value={formData.department}
+                      onChange={(e) => handleChange({ target: { name: 'department', value: e.target.value }})}
+                      required
+                    />
                   </Grid>
                 )}
                 {shouldShowSchool && (
