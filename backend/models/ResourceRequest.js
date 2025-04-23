@@ -11,7 +11,7 @@ const resourceRequestSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  division: {
+  department: {
     type: String,
     required: true
   },

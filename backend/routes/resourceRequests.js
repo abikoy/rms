@@ -82,7 +82,7 @@ router.post('/', auth, async (req, res) => {
     const resourceRequest = new ResourceRequest({
       requestNumber,
       requestedBy: req.user._id,
-      division: requestingUser.department,
+      department: req.user.department, // Add department information
       requestedItems: items.map(item => ({
         resource: item.resource,  // Resource ID is required
         itemNo: item.itemNo,
@@ -183,12 +183,15 @@ router.post('/', auth, async (req, res) => {
 // Get resource requests with filtering
 router.get('/', auth, async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, department } = req.query;
     const filter = {};
 
     // If user is department head, only show requests from their department
     if (req.user.role === 'department_head') {
-      filter['division'] = req.user.department;
+      // Use either the query department or the user's department
+      filter['department'] = department || req.user.department;
+      // For department heads, default to pending if no status specified
+      filter['status'] = status || 'pending';
     } else if (req.user.role === 'staff') {
       // Staff can only see their own requests
       filter['requestedBy'] = req.user._id;
@@ -200,11 +203,15 @@ router.get('/', auth, async (req, res) => {
     }
 
     console.log('Applying filter:', filter);
+    console.log('Department head filter:', filter);
+    
     const requests = await ResourceRequest.find(filter)
       .populate('requestedBy', 'fullName department')
       .sort({ createdAt: -1 })
       .select('-__v')
       .lean();
+    
+    console.log('Found requests for department head:', requests.length);
 
     console.log('Found requests:', requests);
 

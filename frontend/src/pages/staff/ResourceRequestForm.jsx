@@ -227,7 +227,9 @@ const ResourceRequestForm = () => {
             cents: parseInt(item.totalCents) || 0
           },
           remarks: (item.remarks || '').trim()
-        }))
+        })),
+        department: user.department, // Add department information
+        requestedBy: user._id
       };
 
       setError('');

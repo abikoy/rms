@@ -39,7 +39,8 @@ const PendingRequests = () => {
         try {
           // Fetch pending requests for this department
           await dispatch(fetchRequests({
-            status: 'pending'
+            status: 'pending',
+            department: user.department // Add department filter
           })).unwrap();
         } catch (error) {
           console.error('Error loading requests:', error);
@@ -113,13 +114,19 @@ const PendingRequests = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {departmentRequests.map((request) => (
+              {requests.map((request) => (
                 <TableRow key={request._id}>
                   <TableCell>{request._id}</TableCell>
-                  <TableCell>{request.resource.name}</TableCell>
-                  <TableCell>{request.requestedBy.name}</TableCell>
                   <TableCell>
-                    {new Date(request.createdAt).toLocaleDateString()}
+                    {request.requestedItems?.map((item, index) => (
+                      <div key={index}>{item.description}</div>
+                    ))}
+                  </TableCell>
+                  <TableCell>
+                    {request.requestedBy?.fullName || 'Unknown'}
+                  </TableCell>
+                  <TableCell>
+                    {new Date(request.requestDate || request.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
                     <Chip
