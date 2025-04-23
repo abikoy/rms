@@ -49,6 +49,16 @@ const AvailableResources = () => {
   const { user } = useSelector(state => state.auth);
   const { resources = [], loading, error } = useSelector(state => state.resources);
   const [searchQuery, setSearchQuery] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    // Check for success message in sessionStorage
+    const message = sessionStorage.getItem('requestSuccess');
+    if (message) {
+      setSuccessMessage(message);
+      sessionStorage.removeItem('requestSuccess');
+    }
+  }, []);
   const [filterType, setFilterType] = useState('all');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -222,6 +232,11 @@ const AvailableResources = () => {
   return (
     <DashboardLayout>
       <Container maxWidth="lg">
+        {successMessage && (
+          <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage('')}>
+            {successMessage}
+          </Alert>
+        )}
         {errorMessage && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMessage('')}>
             {errorMessage}

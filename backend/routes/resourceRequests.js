@@ -189,7 +189,6 @@ router.get('/', auth, async (req, res) => {
     // If user is department head, only show requests from their department
     if (req.user.role === 'department_head') {
       filter['division'] = req.user.department;
-      filter['assignedTo.userId'] = req.user._id;
     } else if (req.user.role === 'staff') {
       // Staff can only see their own requests
       filter['requestedBy'] = req.user._id;
@@ -200,11 +199,14 @@ router.get('/', auth, async (req, res) => {
       filter.status = status;
     }
 
+    console.log('Applying filter:', filter);
     const requests = await ResourceRequest.find(filter)
       .populate('requestedBy', 'fullName department')
-      .sort({ 'requestedDivisionHead.date': -1 })
+      .sort({ createdAt: -1 })
       .select('-__v')
       .lean();
+
+    console.log('Found requests:', requests);
 
     res.json({
       success: true,

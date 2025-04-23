@@ -37,10 +37,8 @@ const PendingRequests = () => {
     const loadData = async () => {
       if (user?.role === 'department_head') {
         try {
-          // Fetch requests assigned to this department head
+          // Fetch pending requests for this department
           await dispatch(fetchRequests({
-            department: user.department,
-            assignedTo: user._id,
             status: 'pending'
           })).unwrap();
         } catch (error) {
@@ -52,11 +50,10 @@ const PendingRequests = () => {
   }, [dispatch, user]);
 
   // Filter requests for department head's department
-  const departmentRequests = requests.filter(request => 
-    request.requestedBy?.department === user?.department && 
-    request.status === 'pending' &&
-    request.assignedTo?.userId === user?._id
-  );
+  const departmentRequests = Array.isArray(requests) ? requests.filter(request => 
+    request.division?.toLowerCase() === user?.department?.toLowerCase() && 
+    request.status === 'pending'
+  ) : [];
 
   const handleAction = (request, action) => {
     setSelectedRequest(request);

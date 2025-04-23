@@ -1,17 +1,17 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:5003/api';
 
 // Async thunks
 export const fetchRequests = createAsyncThunk(
   'requests/fetchRequests',
   async (filters, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/requests`, {
+      const response = await axios.get(`${API_URL}/resource-requests`, {
         params: filters,
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          'x-auth-token': localStorage.getItem('token')
         }
       });
       return response.data;
@@ -25,9 +25,9 @@ export const createRequest = createAsyncThunk(
   'requests/createRequest',
   async (requestData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/requests`, requestData, {
+      const response = await axios.post(`${API_URL}/resource-requests`, requestData, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          'x-auth-token': localStorage.getItem('token')
         }
       });
       return response.data;
@@ -41,11 +41,11 @@ export const updateRequestStatus = createAsyncThunk(
   'requests/updateRequestStatus',
   async ({ id, status, comment }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(`${API_URL}/requests/${id}/status`, 
+      const response = await axios.put(`${API_URL}/resource-requests/${id}/status`, 
         { status, comment },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
+            'x-auth-token': localStorage.getItem('token')
           }
         }
       );
@@ -99,7 +99,8 @@ const requestSlice = createSlice({
       })
       .addCase(fetchRequests.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.requests = action.payload;
+        state.requests = action.payload.data || [];
+        state.error = null;
       })
       .addCase(fetchRequests.rejected, (state, action) => {
         state.isLoading = false;
