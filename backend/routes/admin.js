@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
-const { DEPARTMENTS_LIST } = require('../constants/departments');
+const { isDepartmentInSchool, getDepartmentsBySchool } = require('../constants/departments');
 
 // Get all users
 router.get('/users', auth, async (req, res) => {
@@ -99,11 +99,14 @@ router.put('/users/:userId', auth, async (req, res) => {
     }
 
     // Validate department if provided
-    if (department && !DEPARTMENTS_LIST.includes(department)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid department. Must be one of: ' + DEPARTMENTS_LIST.join(', ')
-      });
+    if (department && school) {
+      if (!isDepartmentInSchool(department, school)) {
+        const availableDepts = getDepartmentsBySchool(school);
+        return res.status(400).json({
+          success: false,
+          message: `Invalid department for ${school}. Must be one of: ${availableDepts.join(', ')}`
+        });
+      }
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -163,13 +166,27 @@ router.get('/pending-users', auth, async (req, res) => {
       });
     }
 
-    // Get department filter from query params
-    const { department } = req.query;
+    // Get filter params from query
+    const { department, school } = req.query;
     
     // Build query
     const query = { status: 'pending' };
-    if (department && DEPARTMENTS_LIST.includes(department)) {
-      query.department = department;
+    
+    // Apply school filter if present
+    if (school) {
+      query.school = school;
+    }
+    
+    // Apply department filter if present and valid for the school
+    if (department) {
+      if (!school || isDepartmentInSchool(department, school)) {
+        query.department = department;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid department for the selected school'
+        });
+      }
     }
 
     const pendingUsers = await User.find(query)
@@ -203,12 +220,27 @@ router.get('/approved-users', auth, async (req, res) => {
       });
     }
 
-    const { department } = req.query;
+    // Get filter params from query
+    const { department, school } = req.query;
     
     // Build query
     const query = { status: 'approved' };
-    if (department && DEPARTMENTS_LIST.includes(department)) {
-      query.department = department;
+    
+    // Apply school filter if present
+    if (school) {
+      query.school = school;
+    }
+    
+    // Apply department filter if present and valid for the school
+    if (department) {
+      if (!school || isDepartmentInSchool(department, school)) {
+        query.department = department;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid department for the selected school'
+        });
+      }
     }
 
     const approvedUsers = await User.find(query)

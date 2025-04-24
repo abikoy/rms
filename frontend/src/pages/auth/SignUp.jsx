@@ -21,7 +21,8 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { register } from '../../store/slices/authSlice';
-import DepartmentSelect from '../../components/DepartmentSelect';
+import SchoolDepartmentSelect from '../../components/SchoolDepartmentSelect';
+
 
 function SignUp() {
   const theme = useTheme();
@@ -71,9 +72,15 @@ function SignUp() {
     }
     
     // Validate role-specific fields
-    if (['staff', 'department_head'].includes(formData.role) && !formData.department?.trim()) {
-      setError('Department is required for Staff and Department Head roles');
-      return;
+    if (['staff', 'department_head'].includes(formData.role)) {
+      if (!formData.school?.trim()) {
+        setError('School is required');
+        return;
+      }
+      if (!formData.department?.trim()) {
+        setError('Department is required');
+        return;
+      }
     }
     if (formData.role === 'school_dean' && !formData.school?.trim()) {
       setError('School is required for School Dean role');
@@ -92,9 +99,9 @@ function SignUp() {
         phoneNumber: formData.phoneNumber?.trim()
       };
 
-      console.log('Sending registration data:', userData);
+      console.log('Sending registration data:', JSON.stringify(userData, null, 2));
       const result = await dispatch(register(userData)).unwrap();
-      console.log('Registration successful:', result);
+      console.log('Registration successful:', JSON.stringify(result, null, 2));
       if (result.success) {
         setSuccessMessage('Registration successful! Please wait for admin approval.');
         setTimeout(() => {
@@ -103,9 +110,13 @@ function SignUp() {
       }
     } catch (err) {
       console.error('Registration error:', err);
+      console.error('Error details:', JSON.stringify(err, null, 2));
       const errorMessage = err.message || 
         (err.errors ? err.errors.join(', ') : 'Registration failed');
       setError(errorMessage);
+      if (err.response) {
+        console.error('Server response:', JSON.stringify(err.response.data, null, 2));
+      }
     }
   };
 
@@ -279,17 +290,14 @@ function SignUp() {
                 </Grid>
 
                 <Grid item xs={12}>
-                  <FormControl fullWidth required sx={{ mb: { xs: 1, md: 2 } }}>
+                  <FormControl fullWidth required error={!!error}>
                     <InputLabel>Role</InputLabel>
                     <Select
                       name="role"
                       value={formData.role}
-                      onChange={handleChange}
+                      onChange={(e) => handleInputChange('role', e.target.value)}
                       label="Role"
                     >
-                      <MenuItem value="system_admin">System Admin</MenuItem>
-                      <MenuItem value="ddu_asset_manager">DDU Asset Manager</MenuItem>
-                      <MenuItem value="iot_asset_manager">IoT Asset Manager</MenuItem>
                       <MenuItem value="staff">Staff</MenuItem>
                       <MenuItem value="technical_team">Technical Team</MenuItem>
                       <MenuItem value="department_head">Department Head</MenuItem>
@@ -298,28 +306,17 @@ function SignUp() {
                   </FormControl>
                 </Grid>
 
-                {['staff', 'department_head'].includes(formData.role) && (
+                {(formData.role === 'staff' || formData.role === 'department_head' || formData.role === 'school_dean') && (
                   <Grid item xs={12}>
-                    <DepartmentSelect
-                      value={formData.department}
-                      onChange={(e) => handleInputChange('department', e.target.value)}
-                      error={!!error && !formData.department}
-                      helperText={error && !formData.department ? 'Department is required' : ''}
+                    <SchoolDepartmentSelect
+                      role={formData.role}
+                      school={formData.school}
+                      department={formData.department}
+                      onSchoolChange={(value) => handleInputChange('school', value)}
+                      onDepartmentChange={(value) => handleInputChange('department', value)}
+                      error={!!error}
+                      helperText={error}
                       required
-                    />
-                  </Grid>
-                )}
-
-                {formData.role === 'school_dean' && (
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      name="school"
-                      label="School"
-                      value={formData.school}
-                      onChange={handleChange}
-                      required
-                      sx={{ mb: { xs: 1, md: 2 } }}
                     />
                   </Grid>
                 )}

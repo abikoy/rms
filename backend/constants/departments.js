@@ -1,12 +1,21 @@
-const DEPARTMENTS = {
-  SOFTWARE_ENGINEERING: 'Software Engineering',
-  COMPUTER_SCIENCE: 'Computer Science',
-  INFORMATION_TECHNOLOGY: 'Information Technology'
+const { SCHOOLS, SCHOOL_DEPARTMENTS } = require('./schools');
+
+// Get all departments across all schools
+const DEPARTMENTS_LIST = Object.values(SCHOOL_DEPARTMENTS).flat();
+
+// Get departments for a specific school
+const getDepartmentsBySchool = (school) => {
+  return SCHOOL_DEPARTMENTS[school] || [];
 };
 
-const DEPARTMENTS_LIST = Object.values(DEPARTMENTS);
+// Validate if a department belongs to a school
+const isDepartmentInSchool = (department, school) => {
+  const schoolDepartments = SCHOOL_DEPARTMENTS[school] || [];
+  return schoolDepartments.includes(department);
+};
 
 module.exports = {
-  DEPARTMENTS,
-  DEPARTMENTS_LIST
+  DEPARTMENTS_LIST,
+  getDepartmentsBySchool,
+  isDepartmentInSchool
 };

@@ -4,7 +4,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
-const { DEPARTMENTS_LIST } = require('../constants/departments');
+const { isDepartmentInSchool, getDepartmentsBySchool } = require('../constants/departments');
+const { SCHOOLS_LIST } = require('../constants/schools');
 
 // @route   POST api/auth/register
 // @desc    Register user
@@ -44,11 +45,14 @@ router.put('/users/:userId', auth, async (req, res) => {
     }
 
     // Validate department if provided
-    if (department && !DEPARTMENTS_LIST.includes(department)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid department. Must be one of: ' + DEPARTMENTS_LIST.join(', ')
-      });
+    if (department && school) {
+      if (!isDepartmentInSchool(department, school)) {
+        const availableDepts = getDepartmentsBySchool(school);
+        return res.status(400).json({
+          success: false,
+          message: `Invalid department for ${school}. Must be one of: ${availableDepts.join(', ')}`
+        });
+      }
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -119,11 +123,14 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Validate department if provided
-    if (department && !DEPARTMENTS_LIST.includes(department)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid department. Must be one of: ' + DEPARTMENTS_LIST.join(', ')
-      });
+    if (department && school) {
+      if (!isDepartmentInSchool(department, school)) {
+        const availableDepts = getDepartmentsBySchool(school);
+        return res.status(400).json({
+          success: false,
+          message: `Invalid department for ${school}. Must be one of: ${availableDepts.join(', ')}`
+        });
+      }
     }
 
     // Create new user with all fields
@@ -276,11 +283,14 @@ router.put('/profile', auth, async (req, res) => {
     }
 
     // Validate department if provided
-    if (department && !DEPARTMENTS_LIST.includes(department)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid department. Must be one of: ' + DEPARTMENTS_LIST.join(', ')
-      });
+    if (department && school) {
+      if (!isDepartmentInSchool(department, school)) {
+        const availableDepts = getDepartmentsBySchool(school);
+        return res.status(400).json({
+          success: false,
+          message: `Invalid department for ${school}. Must be one of: ${availableDepts.join(', ')}`
+        });
+      }
     }
 
     // Update fields

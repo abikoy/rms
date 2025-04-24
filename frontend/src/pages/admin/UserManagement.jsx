@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import DashboardLayout from '../../components/DashboardLayout';
 import DepartmentSelect from '../../components/DepartmentSelect';
+import { SCHOOLS_LIST, getDepartmentsBySchool } from '../../constants/schools';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import {
   Box,
   Tab,
@@ -46,7 +49,9 @@ const UserManagement = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
+  const [filterSchool, setFilterSchool] = useState('');
   const [sortOrder, setSortOrder] = useState('ascending');
+  const [availableDepartments, setAvailableDepartments] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const dispatch = useDispatch();
@@ -55,17 +60,22 @@ const UserManagement = () => {
 
   // Fetch users based on active tab
   const fetchUsers = () => {
+    const filters = {
+      school: filterSchool,
+      department: filterDepartment
+    };
+
     if (activeTab === 0) {
-      dispatch(getPendingUsers({ department: filterDepartment }));
+      dispatch(getPendingUsers(filters));
     } else {
-      dispatch(getApprovedUsers({ department: filterDepartment }));
+      dispatch(getApprovedUsers(filters));
     }
   };
 
   // Effect to fetch users when tab changes or filters change
   useEffect(() => {
     fetchUsers();
-  }, [activeTab, filterDepartment]);
+  }, [activeTab, filterSchool, filterDepartment]);
 
   useEffect(() => {
     const filteredUsers = (activeTab === 0 ? pendingUsers : approvedUsers) || [];
@@ -81,6 +91,8 @@ const UserManagement = () => {
     setFilterDepartment(event.target.value);
     setPage(0);
   };
+
+
 
   // Dialog states
   const [confirmDialog, setConfirmDialog] = useState({ open: false, user: null, action: null });
@@ -199,6 +211,7 @@ const UserManagement = () => {
               <TableRow>
                 <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, px: { xs: 1, sm: 2 } }}>Name</TableCell>
                 <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, px: { xs: 1, sm: 2 } }}>Email</TableCell>
+                <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, px: { xs: 1, sm: 2 } }}>School</TableCell>
                 <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, px: { xs: 1, sm: 2 } }}>Department</TableCell>
                 <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, px: { xs: 1, sm: 2 } }}>Role</TableCell>
                 <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, px: { xs: 1, sm: 2 } }}>Status</TableCell>
@@ -208,7 +221,7 @@ const UserManagement = () => {
             <TableBody>
               {filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={7} align="center">
                     {usersLoading ? <CircularProgress size={24} /> : 'No users found.'}
                   </TableCell>
                 </TableRow>
@@ -217,6 +230,7 @@ const UserManagement = () => {
                   <TableRow key={user._id} hover>
                     <TableCell sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>{user.fullName}</TableCell>
                     <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' } }}>{user.email}</TableCell>
+                    <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' } }}>{user.school || '-'}</TableCell>
                     <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' } }}>{user.department || '-'}</TableCell>
                     <TableCell>
                       <Box
@@ -329,8 +343,14 @@ const UserManagement = () => {
     if (searchQuery) {
       filteredUsers = filteredUsers.filter(user =>
         user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.department?.toLowerCase().includes(searchQuery.toLowerCase())
+        user.email.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply school filter
+    if (filterSchool) {
+      filteredUsers = filteredUsers.filter(user =>
+        user.school === filterSchool
       );
     }
 
@@ -373,37 +393,67 @@ const UserManagement = () => {
             <Tab label="Approved Users" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }} />
           </Tabs>
 
-          <Grid container spacing={isMobile ? 1 : 2} sx={{ mb: 2 }} alignItems="center">
-            <Grid item xs={12} sm={4} md={4}>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={3}>
               <TextField
                 fullWidth
-                label="Search by Name"
+                label="Search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 size={isMobile ? 'small' : 'medium'}
-                sx={{ mb: isMobile ? 1 : 0 }}
               />
             </Grid>
-            <Grid item xs={12} sm={4} md={4}>
-              <DepartmentSelect
-                value={filterDepartment}
-                onChange={handleDepartmentChange}
-                size={isMobile ? 'small' : 'medium'}
-                fullWidth
-              >
-                <MenuItem value="">All Departments</MenuItem>
-              </DepartmentSelect>
+            <Grid item xs={12} sm={3}>
+              <FormControl fullWidth size={isMobile ? 'small' : 'medium'}>
+                <InputLabel>School</InputLabel>
+                <Select
+                  value={filterSchool}
+                  label="School"
+                  onChange={(e) => {
+                    const school = e.target.value;
+                    setFilterSchool(school);
+                    // Reset department when school changes or is cleared
+                    setFilterDepartment('');
+                    // Update available departments based on selected school
+                    setAvailableDepartments(school ? getDepartmentsBySchool(school) : []);
+                    // Trigger user list refresh
+                    fetchUsers();
+                  }}
+                >
+                  <MenuItem value="">All Schools</MenuItem>
+                  {SCHOOLS_LIST.map((school) => (
+                    <MenuItem key={school} value={school}>{school}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
-            <Grid item xs={12} sm={4} md={4}>
+            <Grid item xs={12} sm={3}>
+              <FormControl fullWidth size={isMobile ? 'small' : 'medium'}>
+                <InputLabel>Department</InputLabel>
+                <Select
+                  value={filterDepartment}
+                  label="Department"
+                  onChange={(e) => setFilterDepartment(e.target.value)}
+                  disabled={!filterSchool}
+                >
+                  <MenuItem value="">All Departments</MenuItem>
+                  {availableDepartments.map((dept) => (
+                    <MenuItem key={dept} value={dept}>{dept}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={3}>
               <FormControl fullWidth size={isMobile ? 'small' : 'medium'}>
                 <InputLabel>Sort</InputLabel>
                 <Select
                   value={sortOrder}
                   label="Sort"
                   onChange={(e) => setSortOrder(e.target.value)}
+                  IconComponent={sortOrder === 'ascending' ? ArrowUpwardIcon : ArrowDownwardIcon}
                 >
-                  <MenuItem value="ascending">Ascending</MenuItem>
-                  <MenuItem value="descending">Descending</MenuItem>
+                  <MenuItem value="ascending">A-Z {<ArrowUpwardIcon sx={{ ml: 1 }} fontSize="small" />}</MenuItem>
+                  <MenuItem value="descending">Z-A {<ArrowDownwardIcon sx={{ ml: 1 }} fontSize="small" />}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -531,24 +581,7 @@ const UserManagement = () => {
                 </Select>
               </FormControl>
             </Grid>
-            {['staff', 'department_head'].includes(editFormData.role) && (
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth required>
-                  <InputLabel>Department</InputLabel>
-                  <Select
-                    name="department"
-                    value={editFormData.department}
-                    onChange={handleEditFormChange}
-                    label="Department"
-                  >
-                    <MenuItem value="cs">Computer Science</MenuItem>
-                    <MenuItem value="it">Information Technology</MenuItem>
-                    <MenuItem value="se">Software Engineering</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-            )}
-            {editFormData.role === 'school_dean' && (
+            {(['staff', 'department_head', 'school_dean'].includes(editFormData.role)) && (
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth required>
                   <InputLabel>School</InputLabel>
@@ -558,9 +591,27 @@ const UserManagement = () => {
                     onChange={handleEditFormChange}
                     label="School"
                   >
-                    <MenuItem value="cs">Computer Science</MenuItem>
-                    <MenuItem value="it">Information Technology</MenuItem>
-                    <MenuItem value="se">Software Engineering</MenuItem>
+                    {SCHOOLS_LIST.map((school) => (
+                      <MenuItem key={school} value={school}>{school}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
+            {(['staff', 'department_head'].includes(editFormData.role) && editFormData.school) && (
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth required>
+                  <InputLabel>Department</InputLabel>
+                  <Select
+                    name="department"
+                    value={editFormData.department}
+                    onChange={handleEditFormChange}
+                    label="Department"
+                    disabled={!editFormData.school}
+                  >
+                    {getDepartmentsBySchool(editFormData.school).map((dept) => (
+                      <MenuItem key={dept} value={dept}>{dept}</MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>

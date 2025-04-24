@@ -14,7 +14,7 @@ import {
   Grid,
 } from '@mui/material';
 import DashboardLayout from '../../components/DashboardLayout';
-import DepartmentSelect from '../../components/DepartmentSelect';
+import SchoolDepartmentSelect from '../../components/SchoolDepartmentSelect';
 import axios from 'axios';
 import { endpoints } from '../../config/api';
 
@@ -188,46 +188,29 @@ const UserRegistration = () => {
                     <Select
                       name="role"
                       value={formData.role}
-                      onChange={handleChange}
+                      onChange={(e) => handleChange(e)}
                       label="Role"
                     >
                       <MenuItem value="system_admin">System Admin</MenuItem>
                       <MenuItem value="ddu_asset_manager">DDU Asset Manager</MenuItem>
                       <MenuItem value="iot_asset_manager">IoT Asset Manager</MenuItem>
-                      <MenuItem value="staff">Staff</MenuItem>
                       <MenuItem value="technical_team">Technical Team</MenuItem>
+                      <MenuItem value="staff">Staff</MenuItem>
                       <MenuItem value="department_head">Department Head</MenuItem>
                       <MenuItem value="school_dean">School Dean</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
-                {shouldShowDepartment && (
-                  <Grid item xs={12} md={6}>
-                    <DepartmentSelect
-                      value={formData.department}
-                      onChange={(e) => handleChange({ target: { name: 'department', value: e.target.value }})}
-                      required
-                    />
-                  </Grid>
-                )}
-                {shouldShowSchool && (
-                  <Grid item xs={12} md={6}>
-                    <FormControl fullWidth required>
-                      <InputLabel>School</InputLabel>
-                      <Select
-                        name="school"
-                        value={formData.school}
-                        onChange={handleChange}
-                        label="School"
-                      >
-                        <MenuItem value="cs">Computer Science</MenuItem>
-                        <MenuItem value="it">Information Technology</MenuItem>
-                        <MenuItem value="se">Software Engineering</MenuItem>
-                        {/* Add more schools as needed */}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                )}
+                <Grid item xs={12} md={6}>
+                  <SchoolDepartmentSelect
+                    role={formData.role}
+                    school={formData.school}
+                    department={formData.department}
+                    onSchoolChange={(value) => handleChange({ target: { name: 'school', value }})}
+                    onDepartmentChange={(value) => handleChange({ target: { name: 'department', value }})}
+                    required={shouldShowDepartment || shouldShowSchool}
+                  />
+                </Grid>
                 <Grid item xs={12}>
                   {error && (
                     <Alert severity="error" sx={{ mb: 2 }}>

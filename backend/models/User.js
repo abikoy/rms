@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const { DEPARTMENTS_LIST } = require('../constants/departments');
+const { isDepartmentInSchool } = require('../constants/departments');
+const { SCHOOLS_LIST } = require('../constants/schools');
 
 // Clear any existing indexes
 mongoose.connection.on('connected', async () => {
@@ -49,31 +50,34 @@ const userSchema = new mongoose.Schema({
     required: function() {
       return ['staff', 'department_head'].includes(this.role);
     },
-    enum: {
-      values: DEPARTMENTS_LIST,
-      message: '{VALUE} is not a valid department'
+    validate: {
+      validator: function(v) {
+        if (['staff', 'department_head'].includes(this.role)) {
+          return v && this.school && isDepartmentInSchool(v, this.school);
+        }
+        return true; // Allow null/empty for other roles
+      },
+      message: 'Selected department is not valid for the chosen school'
     },
-    trim: true
-  },
-  phoneNumber: {
-    type: String,
-    trim: true
+    trim: true,
+    default: null
   },
   school: {
     type: String,
     required: function() {
-      return this.role === 'school_dean';
+      return ['staff', 'department_head', 'school_dean'].includes(this.role);
     },
     validate: {
       validator: function(v) {
-        if (this.role === 'school_dean') {
-          return v && v.trim().length > 0;
+        if (['staff', 'department_head', 'school_dean'].includes(this.role)) {
+          return v && SCHOOLS_LIST.includes(v);
         }
-        return true;
+        return true; // Allow null/empty for other roles
       },
-      message: 'School is required for School Dean role'
+      message: 'Invalid school selected. Must be one of: ' + SCHOOLS_LIST.join(', ')
     },
-    trim: true
+    trim: true,
+    default: null
   },
   profilePhoto: {
     type: String
