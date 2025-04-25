@@ -186,19 +186,36 @@ router.get('/', auth, async (req, res) => {
     const { status, department } = req.query;
     const filter = {};
 
-    // If user is department head, only show requests from their department
-    if (req.user.role === 'department_head') {
-      // Use either the query department or the user's department
-      filter['department'] = department || req.user.department;
-      // For department heads, default to pending if no status specified
-      filter['status'] = status || 'pending';
-    } else if (req.user.role === 'staff') {
-      // Staff can only see their own requests
-      filter['requestedBy'] = req.user._id;
+    // Role-based filtering
+    switch (req.user.role) {
+      case 'department_head':
+        // Department heads see requests from their department
+        filter['department'] = department || req.user.department;
+        filter['departmentHeadStatus'] = status || 'pending';
+        break;
+
+      case 'school_dean':
+        // School deans only see requests approved by department heads
+        filter['departmentHeadStatus'] = 'approved';
+        filter['schoolDeanStatus'] = status || 'pending';
+        if (department) {
+          filter['department'] = department;
+        }
+        break;
+
+      case 'staff':
+        // Staff can only see their own requests
+        filter['requestedBy'] = req.user._id;
+        break;
+
+      default:
+        // For other roles (if any)
+        if (status) filter['status'] = status;
+        if (department) filter['department'] = department;
     }
 
-    // Add status filter if provided
-    if (status) {
+    // Overall status is managed separately from role-specific statuses
+    if (status && !['department_head', 'school_dean'].includes(req.user.role)) {
       filter.status = status;
     }
 
@@ -272,6 +289,89 @@ router.get('/assigned-requests', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching assigned requests'
+    });
+  }
+});
+
+// Handle request approval/rejection
+router.patch('/:requestId/status', auth, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { action } = req.body; // 'approve' or 'reject'
+
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid action. Must be either "approve" or "reject"'
+      });
+    }
+
+    const request = await ResourceRequest.findById(requestId);
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Request not found'
+      });
+    }
+
+    const newStatus = action === 'approve' ? 'approved' : 'rejected';
+
+    // Update the appropriate status based on user role
+    const updateData = {};
+    
+    switch (req.user.role) {
+      case 'department_head':
+        // Department head can only update departmentHeadStatus
+        if (request.department !== req.user.department) {
+          return res.status(403).json({
+            success: false,
+            message: 'You can only manage requests from your department'
+          });
+        }
+        updateData.departmentHeadStatus = newStatus;
+        // If rejected by department head, update overall status
+        if (newStatus === 'rejected') {
+          updateData.status = 'rejected';
+        }
+        break;
+
+      case 'school_dean':
+        // School dean can only update schoolDeanStatus for department-approved requests
+        if (request.departmentHeadStatus !== 'approved') {
+          return res.status(403).json({
+            success: false,
+            message: 'Can only manage requests approved by department head'
+          });
+        }
+        updateData.schoolDeanStatus = newStatus;
+        // Update overall status based on school dean's decision
+        updateData.status = newStatus;
+        break;
+
+      default:
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have permission to approve/reject requests'
+        });
+    }
+
+    // Update the request
+    const updatedRequest = await ResourceRequest.findByIdAndUpdate(
+      requestId,
+      { $set: updateData },
+      { new: true }
+    ).populate('requestedBy', 'fullName department');
+
+    res.json({
+      success: true,
+      message: `Request ${action}ed successfully`,
+      data: updatedRequest
+    });
+  } catch (error) {
+    console.error('Error updating request status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating request status'
     });
   }
 });

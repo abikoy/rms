@@ -59,6 +59,16 @@ const resourceRequestSchema = new mongoose.Schema({
     },
     remark: String
   }],
+  departmentHeadStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  schoolDeanStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],

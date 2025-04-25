@@ -41,8 +41,11 @@ export const updateRequestStatus = createAsyncThunk(
   'requests/updateRequestStatus',
   async ({ id, status, comment }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(`${API_URL}/resource-requests/${id}/status`, 
-        { status, comment },
+      const response = await axios.patch(`${API_URL}/resource-requests/${id}/status`, 
+        { 
+          action: status === 'approved' ? 'approve' : 'reject',
+          comment 
+        },
         {
           headers: {
             'x-auth-token': localStorage.getItem('token')
@@ -51,7 +54,7 @@ export const updateRequestStatus = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );

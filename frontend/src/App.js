@@ -36,6 +36,13 @@ import StaffSettings from './pages/staff/Settings';
 import DepartmentResources from './pages/department-head/DepartmentResources';
 import PendingRequests from './pages/department-head/PendingRequests';
 
+// School Dean Pages
+import Requests from './pages/school-dean/Requests';
+import SchoolDeanPendingRequests from './pages/school-dean/PendingRequests';
+import RequestHistory from './pages/school-dean/RequestHistory';
+import SchoolResources from './pages/school-dean/SchoolResources';
+import SchoolDeanAvailableResources from './pages/school-dean/AvailableResources';
+
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const auth = useSelector((state) => state.auth);
@@ -134,6 +141,15 @@ const AppContent = () => {
       <Route path="/department-head/resources" element={<ProtectedRoute><DepartmentResources /></ProtectedRoute>} />
       <Route path="/department-head/pending-requests" element={<ProtectedRoute><PendingRequests /></ProtectedRoute>} />
       <Route path="/department-head/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
+      {/* School Dean Routes */}
+      <Route path="/school-dean/dashboard" element={<ProtectedRoute><SchoolDeanDashboard /></ProtectedRoute>} />
+      <Route path="/school-dean/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
+      <Route path="/school-dean/pending-requests" element={<ProtectedRoute><PendingRequests /></ProtectedRoute>} />
+      <Route path="/school-dean/request-history" element={<ProtectedRoute><RequestHistory /></ProtectedRoute>} />
+      <Route path="/school-dean/school-resources" element={<ProtectedRoute><SchoolResources /></ProtectedRoute>} />
+      <Route path="/school-dean/available-resources" element={<ProtectedRoute><AvailableResources /></ProtectedRoute>} />
+      <Route path="/school-dean/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
       {/* Catch-all route for 404 */}
       <Route path="*" element={<Navigate to="/" />} />

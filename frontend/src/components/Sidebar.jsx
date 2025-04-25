@@ -124,13 +124,54 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
       
       case 'ddu_asset_manager':
       case 'iot_asset_manager':
-      case 'school_dean':
         return [
           ...commonItems,
           {
             text: 'Transfer Resources',
             icon: <ResourcesIcon />,
             path: '/resources/transfer',
+          },
+        ];
+
+      case 'school_dean':
+        return [
+          {
+            text: 'Dashboard',
+            icon: <DashboardIcon />,
+            path: '/school-dean/dashboard',
+            section: 'main'
+          },
+          {
+            text: 'Requests',
+            icon: <SwapHoriz />,
+            subItems: [
+              {
+                text: 'Pending Requests',
+                path: '/school-dean/pending-requests',
+              },
+              {
+                text: 'Request History',
+                path: '/school-dean/request-history',
+              },
+            ],
+          },
+          {
+            text: 'Schools Resources',
+            icon: <ResourcesIcon />,
+            path: '/school-dean/school-resources',
+            section: 'main'
+          },
+          {
+            text: 'Available Resources',
+            icon: <ResourcesIcon />,
+            path: '/school-dean/available-resources',
+            section: 'main'
+          },
+          {
+            text: 'Settings',
+            icon: <SettingsIcon />,
+            path: '/school-dean/settings',
+            section: 'bottom'
           },
         ];
       

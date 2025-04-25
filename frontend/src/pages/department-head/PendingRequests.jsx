@@ -286,6 +286,8 @@ const PendingRequests = () => {
   const [comment, setComment] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [actionType, setActionType] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -317,17 +319,28 @@ const PendingRequests = () => {
 
   const handleSubmitAction = async () => {
     try {
-      await dispatch(updateRequestStatus({
+      const result = await dispatch(updateRequestStatus({
         id: selectedRequest._id,
         status: actionType,
         comment: comment
       })).unwrap();
       
+      // Show success message
+      setSuccessMessage(`Request ${actionType === 'approved' ? 'approved' : 'rejected'} successfully`);
+      
+      // Reset form
       setDialogOpen(false);
       setComment('');
       setSelectedRequest(null);
+      
+      // Refresh the requests list
+      dispatch(fetchRequests({
+        status: 'pending',
+        department: user.department
+      }));
     } catch (error) {
       console.error('Error updating request:', error);
+      setErrorMessage(error.message || 'Failed to update request status');
     }
   };
 
@@ -351,9 +364,15 @@ const PendingRequests = () => {
          
         </Box>
 
-        {error && (
+        {(error || errorMessage) && (
           <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
+            {error || errorMessage}
+          </Alert>
+        )}
+        
+        {successMessage && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            {successMessage}
           </Alert>
         )}
 
