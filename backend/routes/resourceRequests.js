@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const ResourceRequest = require('../models/ResourceRequest');
 const auth = require('../middleware/auth');
+const { SCHOOLS, SCHOOL_DEPARTMENTS } = require('../constants/schools');
 
 // Create a new resource request
 router.post('/', auth, async (req, res) => {
@@ -186,6 +187,10 @@ router.get('/', auth, async (req, res) => {
     const { status, department } = req.query;
     const filter = {};
 
+    // Get full user details including school
+    const user = await User.findById(req.user._id).select('role department school').lean();
+    console.log('Full user details:', user);
+
     // Role-based filtering
     switch (req.user.role) {
       case 'department_head':
@@ -195,9 +200,44 @@ router.get('/', auth, async (req, res) => {
         break;
 
       case 'school_dean':
-        // School deans only see requests approved by department heads
+        console.log('Processing request for School Dean');
+        console.log('Dean\'s details:', user);
+
+        if (!user.school) {
+          console.error('No school assigned to dean:', user);
+          return res.status(400).json({
+            success: false,
+            message: 'No school assigned to dean'
+          });
+        }
+
+        // Get all departments under this school
+        const schoolDepartments = SCHOOL_DEPARTMENTS[user.school];
+        
+        if (!schoolDepartments) {
+          console.error('Invalid school assigned to dean:', user.school);
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid school assigned to dean'
+          });
+        }
+
+        console.log('Departments in dean\'s school:', schoolDepartments);
+
+        // School deans only see requests that are:
+        // 1. Approved by department heads
+        // 2. From departments within their school
         filter['departmentHeadStatus'] = 'approved';
         filter['schoolDeanStatus'] = status || 'pending';
+        filter['department'] = { $in: schoolDepartments };
+
+        // If a specific department is requested, ensure it's within the dean's school
+        if (department && !schoolDepartments.includes(department)) {
+          return res.status(403).json({
+            success: false,
+            message: 'Access denied. Department is not within your school'
+          });
+        }
         if (department) {
           filter['department'] = department;
         }

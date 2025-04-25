@@ -48,7 +48,7 @@ const userSchema = new mongoose.Schema({
   department: {
     type: String,
     required: function() {
-      return ['staff', 'department_head'].includes(this.role);
+      return ['staff', 'department_head', 'school_dean'].includes(this.role);
     },
     validate: {
       validator: function(v) {
@@ -65,11 +65,11 @@ const userSchema = new mongoose.Schema({
   school: {
     type: String,
     required: function() {
-      return ['staff', 'department_head', 'school_dean'].includes(this.role);
+      return this.role === 'school_dean';
     },
     validate: {
       validator: function(v) {
-        if (['staff', 'department_head', 'school_dean'].includes(this.role)) {
+        if (this.role === 'school_dean') {
           return v && SCHOOLS_LIST.includes(v);
         }
         return true; // Allow null/empty for other roles
