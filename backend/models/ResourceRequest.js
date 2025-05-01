@@ -15,10 +15,13 @@ const resourceRequestSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+<<<<<<< HEAD
   school: {
     type: String,
     required: true
   },
+=======
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
   requestedItems: [{
     resource: {
       type: mongoose.Schema.Types.ObjectId,
@@ -73,11 +76,14 @@ const resourceRequestSchema = new mongoose.Schema({
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending'
   },
+<<<<<<< HEAD
   assetManagerStatus: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending'
   },
+=======
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],

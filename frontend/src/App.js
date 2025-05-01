@@ -29,10 +29,13 @@ import Profile from './pages/common/Profile';
 import TransferResources from './pages/resources/TransferResources';
 import AddIoTAsset from './pages/asset-managers/iot/AddIoTAsset';
 import AddDDUAsset from './pages/asset-managers/ddu/AddDDUAsset';
+<<<<<<< HEAD
 import DDUPendingRequests from './pages/asset-managers/ddu/requests/PendingRequests';
 import DDURequestHistory from './pages/asset-managers/ddu/requests/RequestHistory';
 import IOTPendingRequests from './pages/asset-managers/iot/requests/PendingRequests';
 import IOTRequestHistory from './pages/asset-managers/iot/requests/RequestHistory';
+=======
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
 import MyResources from './pages/staff/MyResources';
 import AvailableResources from './pages/staff/AvailableResources';
 import ResourceRequestForm from './pages/staff/ResourceRequestForm';
@@ -132,6 +135,7 @@ const AppContent = () => {
       <Route path="/asset-managers/iot/add" element={<AdminRoute><AddIoTAsset /></AdminRoute>} />
       <Route path="/asset-managers/ddu/add" element={<AdminRoute><AddDDUAsset /></AdminRoute>} />
 
+<<<<<<< HEAD
       {/* DDU Asset Manager Routes */}
       <Route path="/asset-managers/ddu/requests/pending" element={<AdminRoute><DDUPendingRequests /></AdminRoute>} />
       <Route path="/asset-managers/ddu/requests/history" element={<AdminRoute><DDURequestHistory /></AdminRoute>} />
@@ -140,6 +144,8 @@ const AppContent = () => {
       <Route path="/asset-managers/iot/requests/pending" element={<AdminRoute><IOTPendingRequests /></AdminRoute>} />
       <Route path="/asset-managers/iot/requests/history" element={<AdminRoute><IOTRequestHistory /></AdminRoute>} />
 
+=======
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
       {/* Staff Routes */}
       <Route path="/staff/dashboard" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
       <Route path="/staff/my-resources" element={<StaffRoute><MyResources /></StaffRoute>} />

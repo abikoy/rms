@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
+<<<<<<< HEAD
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchResourceById } from '../../store/slices/resourceSlice';
+=======
+import { useSelector, useDispatch } from 'react-redux';
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
 import {
   Box,
   Container,
@@ -19,6 +23,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+<<<<<<< HEAD
+=======
+  TextField,
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
   Alert,
   Grid,
   Card,
@@ -72,7 +80,11 @@ const ResponsiveRequestList = ({ requests, onAction }) => {
                         Request ID
                       </Typography>
                       <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+<<<<<<< HEAD
                         {request.idResource || request._id}
+=======
+                        {request._id}
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
                       </Typography>
                     </Box>
                     <Chip
@@ -91,7 +103,11 @@ const ResponsiveRequestList = ({ requests, onAction }) => {
 
                   <Box>
                     <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+<<<<<<< HEAD
                       Resource Requested
+=======
+                      Resources
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
                     </Typography>
                     <Box sx={{ 
                       bgcolor: 'grey.50', 
@@ -102,9 +118,28 @@ const ResponsiveRequestList = ({ requests, onAction }) => {
                       maxHeight: isTablet ? '120px' : 'auto',
                       overflowY: isTablet ? 'auto' : 'visible'
                     }}>
+<<<<<<< HEAD
                       <Typography variant="body2">
                         {request.requestName || request.requestedItems?.[0]?.resource?.name || 'Unknown Resource'}
                       </Typography>
+=======
+                      {request.requestedItems?.map((item, index) => (
+                        <Typography 
+                          key={index} 
+                          variant="body2" 
+                          sx={{ 
+                            '&:not(:last-child)': { 
+                              mb: 1,
+                              pb: 1,
+                              borderBottom: '1px solid',
+                              borderColor: 'grey.200'
+                            }
+                          }}
+                        >
+                          {item.description}
+                        </Typography>
+                      ))}
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
                     </Box>
                   </Box>
 
@@ -113,7 +148,11 @@ const ResponsiveRequestList = ({ requests, onAction }) => {
                       Requested By
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
+<<<<<<< HEAD
                       {request.requestedBy || 'Unknown'}
+=======
+                      {request.requestedBy?.fullName || 'Unknown'}
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
                     </Typography>
                   </Box>
 
@@ -122,7 +161,11 @@ const ResponsiveRequestList = ({ requests, onAction }) => {
                       Date
                     </Typography>
                     <Typography variant="body2">
+<<<<<<< HEAD
                       {new Date(request.date || request.requestDate || request.createdAt).toLocaleDateString('en-US', {
+=======
+                      {new Date(request.requestDate || request.createdAt).toLocaleDateString('en-US', {
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric',
@@ -139,6 +182,7 @@ const ResponsiveRequestList = ({ requests, onAction }) => {
               <CardActions sx={{ p: 2, pt: 0, gap: 1, mt: 'auto' }}>
                 <Button
                   fullWidth
+<<<<<<< HEAD
                   variant="outlined"
                   onClick={() => onAction(request, 'view')}
                 >
@@ -146,6 +190,8 @@ const ResponsiveRequestList = ({ requests, onAction }) => {
                 </Button>
                 <Button
                   fullWidth
+=======
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
                   variant="contained"
                   color="success"
                   size={isTablet ? "small" : "medium"}
@@ -191,7 +237,11 @@ const ResponsiveRequestList = ({ requests, onAction }) => {
         <TableHead>
           <TableRow sx={{ bgcolor: 'primary.main' }}>
             <TableCell sx={{ color: 'common.white', fontWeight: 'bold' }}>Request ID</TableCell>
+<<<<<<< HEAD
             <TableCell sx={{ color: 'common.white', fontWeight: 'bold' }}>Resource Requested</TableCell>
+=======
+            <TableCell sx={{ color: 'common.white', fontWeight: 'bold' }}>Resource</TableCell>
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
             <TableCell sx={{ color: 'common.white', fontWeight: 'bold' }}>Requested By</TableCell>
             <TableCell sx={{ color: 'common.white', fontWeight: 'bold' }}>Date</TableCell>
             <TableCell sx={{ color: 'common.white', fontWeight: 'bold' }}>Status</TableCell>
@@ -209,6 +259,7 @@ const ResponsiveRequestList = ({ requests, onAction }) => {
                 }
               }}
             >
+<<<<<<< HEAD
               <TableCell>{request.idResource || request._id}</TableCell>
               <TableCell>
                 {request.requestName || request.requestedItems?.[0]?.resource?.name || 'Unknown Resource'}
@@ -218,6 +269,19 @@ const ResponsiveRequestList = ({ requests, onAction }) => {
               </TableCell>
               <TableCell>
                 {new Date(request.date || request.requestDate || request.createdAt).toLocaleDateString()}
+=======
+              <TableCell>{request._id}</TableCell>
+              <TableCell>
+                {request.requestedItems?.map((item, index) => (
+                  <div key={index}>{item.description}</div>
+                ))}
+              </TableCell>
+              <TableCell>
+                {request.requestedBy?.fullName || 'Unknown'}
+              </TableCell>
+              <TableCell>
+                {new Date(request.requestDate || request.createdAt).toLocaleDateString()}
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
               </TableCell>
               <TableCell>
                 <Chip
@@ -236,6 +300,7 @@ const ResponsiveRequestList = ({ requests, onAction }) => {
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
                     size="small"
+<<<<<<< HEAD
                     variant="outlined"
                     onClick={() => onAction(request, 'view')}
                   >
@@ -243,6 +308,8 @@ const ResponsiveRequestList = ({ requests, onAction }) => {
                   </Button>
                   <Button
                     size="small"
+=======
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
                     variant="contained"
                     color="success"
                     onClick={() => onAction(request, 'approved')}
@@ -282,8 +349,13 @@ const PendingRequests = () => {
   const { user } = useSelector((state) => state.auth);
   const { requests = [], loading, error } = useSelector((state) => state.requests);
   const [selectedRequest, setSelectedRequest] = useState(null);
+<<<<<<< HEAD
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+=======
+  const [comment, setComment] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
   const [actionType, setActionType] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -292,6 +364,7 @@ const PendingRequests = () => {
     const loadData = async () => {
       if (user?.role === 'department_head') {
         try {
+<<<<<<< HEAD
           await dispatch(fetchRequests({
             status: 'pending',
             department: user.department
@@ -299,12 +372,25 @@ const PendingRequests = () => {
         } catch (error) {
           console.error('Error loading requests:', error);
           setErrorMessage('Failed to load requests');
+=======
+          // Fetch pending requests for this department
+          await dispatch(fetchRequests({
+            status: 'pending',
+            department: user.department // Add department filter
+          })).unwrap();
+        } catch (error) {
+          console.error('Error loading requests:', error);
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
         }
       }
     };
     loadData();
   }, [dispatch, user]);
 
+<<<<<<< HEAD
+=======
+  // Filter requests for department head's department
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
   const pendingRequests = Array.isArray(requests) ? requests.filter(request => 
     request.status === 'pending'
   ) : [];
@@ -312,17 +398,22 @@ const PendingRequests = () => {
   const handleAction = (request, action) => {
     setSelectedRequest(request);
     setActionType(action);
+<<<<<<< HEAD
     if (action === 'view') {
       setViewDialogOpen(true);
     } else {
       setConfirmDialogOpen(true);
     }
+=======
+    setDialogOpen(true);
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
   };
 
   const handleSubmitAction = async () => {
     try {
       const result = await dispatch(updateRequestStatus({
         id: selectedRequest._id,
+<<<<<<< HEAD
         status: actionType
       })).unwrap();
       
@@ -330,6 +421,21 @@ const PendingRequests = () => {
       setConfirmDialogOpen(false);
       setSelectedRequest(null);
       
+=======
+        status: actionType,
+        comment: comment
+      })).unwrap();
+      
+      // Show success message
+      setSuccessMessage(`Request ${actionType === 'approved' ? 'approved' : 'rejected'} successfully`);
+      
+      // Reset form
+      setDialogOpen(false);
+      setComment('');
+      setSelectedRequest(null);
+      
+      // Refresh the requests list
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
       dispatch(fetchRequests({
         status: 'pending',
         department: user.department
@@ -340,6 +446,7 @@ const PendingRequests = () => {
     }
   };
 
+<<<<<<< HEAD
   const ConfirmationDialog = () => (
     <Dialog 
       open={confirmDialogOpen} 
@@ -527,6 +634,17 @@ const PendingRequests = () => {
     </Dialog>
     );
   };
+=======
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <CircularProgress />
+        </Box>
+      </DashboardLayout>
+    );
+  }
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
 
   return (
     <DashboardLayout>
@@ -535,16 +653,28 @@ const PendingRequests = () => {
           <Typography variant="h4" component="h1">
             Pending Resource Requests
           </Typography>
+<<<<<<< HEAD
         </Box>
 
         {(error || errorMessage) && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMessage('')}>
+=======
+         
+        </Box>
+
+        {(error || errorMessage) && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
             {error || errorMessage}
           </Alert>
         )}
         
         {successMessage && (
+<<<<<<< HEAD
           <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage('')}>
+=======
+          <Alert severity="success" sx={{ mb: 2 }}>
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
             {successMessage}
           </Alert>
         )}
@@ -562,8 +692,37 @@ const PendingRequests = () => {
           <ResponsiveRequestList requests={pendingRequests} onAction={handleAction} />
         )}
 
+<<<<<<< HEAD
         <ViewDialog />
         <ConfirmationDialog />
+=======
+        <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
+          <DialogTitle>
+            {actionType === 'approved' ? 'Approve Request' : 'Reject Request'}
+          </DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Comment"
+              fullWidth
+              multiline
+              rows={4}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={handleSubmitAction}
+              color={actionType === 'approved' ? 'primary' : 'error'}
+            >
+              {actionType === 'approved' ? 'Approve' : 'Reject'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
       </Container>
     </DashboardLayout>
   );

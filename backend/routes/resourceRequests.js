@@ -18,9 +18,15 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
+<<<<<<< HEAD
     // Get the requesting user's details with school information
     console.log('Finding requesting user with ID:', req.user._id);
     const requestingUser = await User.findById(req.user._id).populate('department').lean();
+=======
+    // Get the requesting user's details
+    console.log('Finding requesting user with ID:', req.user._id);
+    const requestingUser = await User.findById(req.user._id);
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
     
     if (!requestingUser) {
       console.error('Requesting user not found:', req.user._id);
@@ -83,8 +89,12 @@ router.post('/', auth, async (req, res) => {
     const resourceRequest = new ResourceRequest({
       requestNumber,
       requestedBy: req.user._id,
+<<<<<<< HEAD
       department: requestingUser.department,
       school: requestingUser.school, // Add school information
+=======
+      department: req.user.department, // Add department information
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
       requestedItems: items.map(item => ({
         resource: item.resource,  // Resource ID is required
         itemNo: item.itemNo,
@@ -193,8 +203,12 @@ router.get('/', auth, async (req, res) => {
     console.log('Full user details:', user);
 
     // Role-based filtering
+<<<<<<< HEAD
     const role = req.query.role || req.user.role;
     switch (role) {
+=======
+    switch (req.user.role) {
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
       case 'department_head':
         // Department heads see requests from their department
         filter['department'] = department || req.user.department;
@@ -250,6 +264,7 @@ router.get('/', auth, async (req, res) => {
         filter['requestedBy'] = req.user._id;
         break;
 
+<<<<<<< HEAD
       case 'ddu_asset_manager':
         // DDU Asset Managers see requests from Business and Health schools that are approved by deans
         filter['school'] = { $in: [SCHOOLS.BUSINESS, SCHOOLS.HEALTH] };
@@ -266,6 +281,8 @@ router.get('/', auth, async (req, res) => {
         filter['status'] = { $ne: 'rejected' };
         break;
 
+=======
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
       default:
         // For other roles (if any)
         if (status) filter['status'] = status;
@@ -281,6 +298,7 @@ router.get('/', auth, async (req, res) => {
     console.log('Department head filter:', filter);
     
     const requests = await ResourceRequest.find(filter)
+<<<<<<< HEAD
       .populate({
         path: 'requestedBy',
         select: 'fullName department school'
@@ -309,6 +327,12 @@ router.get('/', auth, async (req, res) => {
           request.schoolDeanStatus
       };
     });
+=======
+      .populate('requestedBy', 'fullName department')
+      .sort({ createdAt: -1 })
+      .select('-__v')
+      .lean();
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
     
     console.log('Found requests for department head:', requests.length);
 
@@ -316,7 +340,11 @@ router.get('/', auth, async (req, res) => {
 
     res.json({
       success: true,
+<<<<<<< HEAD
       data: transformedRequests
+=======
+      data: requests
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
     });
   } catch (error) {
     console.error('Error fetching requests:', error);
@@ -426,6 +454,7 @@ router.patch('/:requestId/status', auth, async (req, res) => {
           });
         }
         updateData.schoolDeanStatus = newStatus;
+<<<<<<< HEAD
         break;
 
       case 'ddu_asset_manager':
@@ -450,6 +479,8 @@ router.patch('/:requestId/status', auth, async (req, res) => {
         }
 
         updateData.assetManagerStatus = newStatus;
+=======
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
         // Update overall status based on school dean's decision
         updateData.status = newStatus;
         break;

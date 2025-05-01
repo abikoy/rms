@@ -15,7 +15,10 @@ import {
   Card,
   CardContent,
   Snackbar,
+<<<<<<< HEAD
   InputAdornment
+=======
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
 } from '@mui/material';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -53,10 +56,16 @@ const ResourceRequestForm = () => {
     if (selectedResourceData) {
       try {
         const resource = JSON.parse(selectedResourceData);
+<<<<<<< HEAD
         
         // Extract price from the resource data
         const birr = resource.price?.birr || 0;
         const cents = resource.price?.cents || 0;
+=======
+        const price = parseFloat(resource.price) || 0;
+        const birr = Math.floor(price);
+        const cents = Math.round((price - birr) * 100);
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
 
         setItems([{
           itemNo: 1,
@@ -67,8 +76,13 @@ const ResourceRequestForm = () => {
           quantityIssued: '',
           birr: birr.toString(),
           cents: cents.toString(),
+<<<<<<< HEAD
           totalBirr: birr.toString(), // Initialize total with unit price
           totalCents: cents.toString(), // Initialize total with unit price
+=======
+          totalBirr: '',
+          totalCents: '',
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
           remarks: ''
         }]);
 
@@ -265,6 +279,7 @@ const ResourceRequestForm = () => {
     }
   };
 
+<<<<<<< HEAD
   const renderPriceFields = (item, index) => (
     <>
       <Grid item xs={12} sm={6} md={3}>
@@ -320,6 +335,8 @@ const ResourceRequestForm = () => {
     </>
   );
 
+=======
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
   const renderItemCard = (item, index) => (
     <Card key={index} sx={{ mb: 2, position: 'relative' }}>
       <CardContent>
@@ -335,11 +352,17 @@ const ResourceRequestForm = () => {
               fullWidth
               label="Description"
               value={item.description}
+<<<<<<< HEAD
               variant="outlined"
               size="small"
               InputProps={{
                 readOnly: true,
               }}
+=======
+              onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+              variant="outlined"
+              size="small"
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
             />
           </Grid>
 
@@ -348,11 +371,17 @@ const ResourceRequestForm = () => {
               fullWidth
               label="Unit of Measure"
               value={item.unitOfMeasure}
+<<<<<<< HEAD
               variant="outlined"
               size="small"
               InputProps={{
                 readOnly: true,
               }}
+=======
+              onChange={(e) => handleItemChange(index, 'unitOfMeasure', e.target.value)}
+              variant="outlined"
+              size="small"
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
             />
           </Grid>
 
@@ -360,16 +389,93 @@ const ResourceRequestForm = () => {
             <TextField
               fullWidth
               label="Quantity Requested"
+<<<<<<< HEAD
+=======
+              type="text"
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
               value={item.quantityRequested}
               onChange={(e) => handleItemChange(index, 'quantityRequested', e.target.value)}
               variant="outlined"
               size="small"
+<<<<<<< HEAD
               type="number"
               inputProps={{ min: "1" }}
             />
           </Grid>
 
           {renderPriceFields(item, index)}
+=======
+              error={error.includes('Quantity')}
+              helperText={error.includes('Quantity') ? error : ''}
+              inputProps={{ min: "0" }}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Quantity Issued"
+              type="text"
+              value={item.quantityIssued}
+              onChange={(e) => handleItemChange(index, 'quantityIssued', e.target.value)}
+              variant="outlined"
+              size="small"
+              disabled
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField
+                label="Price (Birr)"
+                type="text"
+                value={item.birr}
+                onChange={(e) => handleItemChange(index, 'birr', e.target.value)}
+                variant="outlined"
+                size="small"
+                sx={{ flex: 1 }}
+                error={error.includes('Birr')}
+                helperText={error.includes('Birr') ? error : ''}
+                inputProps={{ min: "0" }}
+              />
+              <TextField
+                label="Cents"
+                type="text"
+                value={item.cents}
+                onChange={(e) => handleItemChange(index, 'cents', e.target.value)}
+                variant="outlined"
+                size="small"
+                sx={{ width: '100px' }}
+                error={error.includes('Cents')}
+                helperText={error.includes('Cents') ? error : ''}
+                inputProps={{ min: "0", max: "99" }}
+              />
+            </Box>
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField
+                label="Total (Birr)"
+                type="text"
+                value={item.totalBirr}
+                variant="outlined"
+                size="small"
+                sx={{ flex: 1 }}
+                InputProps={{ readOnly: true }}
+              />
+              <TextField
+                label="Total Cents"
+                type="text"
+                value={item.totalCents}
+                variant="outlined"
+                size="small"
+                sx={{ width: '100px' }}
+                InputProps={{ readOnly: true }}
+              />
+            </Box>
+          </Grid>
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
 
           <Grid item xs={12}>
             <TextField
@@ -379,11 +485,27 @@ const ResourceRequestForm = () => {
               onChange={(e) => handleItemChange(index, 'remarks', e.target.value)}
               variant="outlined"
               size="small"
+<<<<<<< HEAD
               multiline
               rows={2}
             />
           </Grid>
         </Grid>
+=======
+            />
+          </Grid>
+        </Grid>
+
+        {items.length > 1 && (
+          <IconButton
+            onClick={() => removeItem(index)}
+            sx={{ position: 'absolute', top: 8, right: 8 }}
+            color="error"
+          >
+            <DeleteIcon />
+          </IconButton>
+        )}
+>>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
       </CardContent>
     </Card>
   );
