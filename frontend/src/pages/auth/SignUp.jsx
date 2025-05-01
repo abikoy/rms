@@ -1,0 +1,408 @@
+import { useState } from 'react';
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Container,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Link,
+  Alert,
+  IconButton,
+  InputAdornment,
+  useTheme,
+  useMediaQuery,
+  Grid
+} from '@mui/material';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { register } from '../../store/slices/authSlice';
+import SchoolDepartmentSelect from '../../components/SchoolDepartmentSelect';
+
+
+function SignUp() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    password: '',
+    confirmPassword: '',
+    role: '',
+    department: '',
+    school: ''
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.fullName?.trim()) {
+      setError('Full name is required');
+      return;
+    }
+    if (!formData.email?.trim()) {
+      setError('Email is required');
+      return;
+    }
+    if (!formData.password) {
+      setError('Password is required');
+      return;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    if (!formData.role) {
+      setError('Role is required');
+      return;
+    }
+    
+    // Validate role-specific fields
+    if (['staff', 'department_head'].includes(formData.role)) {
+      if (!formData.school?.trim()) {
+        setError('School is required');
+        return;
+      }
+      if (!formData.department?.trim()) {
+        setError('Department is required');
+        return;
+      }
+    }
+    if (formData.role === 'school_dean' && !formData.school?.trim()) {
+      setError('School is required for School Dean role');
+      return;
+    }
+
+    try {
+      // Prepare user data
+      const userData = {
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        role: formData.role,
+        department: formData.department?.trim(),
+        school: formData.school?.trim(),
+        phoneNumber: formData.phoneNumber?.trim()
+      };
+
+      console.log('Sending registration data:', JSON.stringify(userData, null, 2));
+      const result = await dispatch(register(userData)).unwrap();
+      console.log('Registration successful:', JSON.stringify(result, null, 2));
+      if (result.success) {
+        setSuccessMessage('Registration successful! Please wait for admin approval.');
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
+      }
+    } catch (err) {
+      console.error('Registration error:', err);
+      console.error('Error details:', JSON.stringify(err, null, 2));
+      const errorMessage = err.message || 
+        (err.errors ? err.errors.join(', ') : 'Registration failed');
+      setError(errorMessage);
+      if (err.response) {
+        console.error('Server response:', JSON.stringify(err.response.data, null, 2));
+      }
+    }
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleInputChange = (name, value) => {
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+  };
+
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(45deg,rgb(221, 223, 226) 30%,rgb(227, 232, 238) 90%)',
+        display: 'flex',
+        alignItems: 'center',
+        p: { xs: 2, sm: 4 }
+      }}
+    >
+      <Container maxWidth={isMobile ? 'sm' : 'lg'}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column-reverse' : 'row',
+            backgroundColor: '#fff',
+            borderRadius: 2,
+            overflow: 'hidden',
+            boxShadow: 3
+          }}
+        >
+          {/* Left side - Registration form */}
+          <Box
+            sx={{
+              flex: { xs: '1', md: '2' },
+              p: { xs: 3, sm: 4 },
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center'
+            }}
+          >
+            <Typography 
+              variant={isMobile ? 'h5' : 'h4'} 
+              component="h1" 
+              gutterBottom
+              sx={{ textAlign: { xs: 'center', md: 'left' } }}
+            >
+              Create an Account
+            </Typography>
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                mb: 4, 
+                color: 'text.secondary',
+                textAlign: { xs: 'center', md: 'left' }
+              }}
+            >
+              Join DDU Resource Management System
+            </Typography>
+
+            {error && (
+              <Grid item xs={12}>
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              </Grid>
+            )}
+            {successMessage && (
+              <Grid item xs={12}>
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  {successMessage}
+                </Alert>
+              </Grid>
+            )}
+            <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    required
+                    fullWidth
+                    name="fullName"
+                    label="Full Name"
+                    value={formData.fullName}
+                    onChange={handleChange}
+                    sx={{ mb: { xs: 1, md: 2 } }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    name="email"
+                    label="Email Address"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    sx={{ mb: { xs: 1, md: 2 } }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    name="phoneNumber"
+                    label="Phone Number"
+                    value={formData.phoneNumber}
+                    onChange={handleChange}
+                    sx={{ mb: { xs: 1, md: 2 } }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    name="password"
+                    label="Password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={handleChange}
+                    sx={{ mb: { xs: 1, md: 2 } }}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            onClick={() => setShowPassword(!showPassword)}
+                            edge="end"
+                            size={isMobile ? 'small' : 'medium'}
+                          >
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    name="confirmPassword"
+                    label="Confirm Password"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    sx={{ mb: { xs: 1, md: 2 } }}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            edge="end"
+                            size={isMobile ? 'small' : 'medium'}
+                          >
+                            {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <FormControl fullWidth required error={!!error}>
+                    <InputLabel>Role</InputLabel>
+                    <Select
+                      name="role"
+                      value={formData.role}
+                      onChange={(e) => handleInputChange('role', e.target.value)}
+                      label="Role"
+                    >
+                      <MenuItem value="staff">Staff</MenuItem>
+                      <MenuItem value="technical_team">Technical Team</MenuItem>
+                      <MenuItem value="department_head">Department Head</MenuItem>
+                      <MenuItem value="school_dean">School Dean</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {(formData.role === 'staff' || formData.role === 'department_head' || formData.role === 'school_dean') && (
+                  <Grid item xs={12}>
+                    <SchoolDepartmentSelect
+                      role={formData.role}
+                      school={formData.school}
+                      department={formData.department}
+                      onSchoolChange={(value) => handleInputChange('school', value)}
+                      onDepartmentChange={(value) => handleInputChange('department', value)}
+                      error={!!error}
+                      helperText={error}
+                      required
+                    />
+                  </Grid>
+                )}
+
+                <Grid item xs={12}>
+                  <Button
+                    type="submit"
+                    fullWidth
+                    variant="contained"
+                    size={isMobile ? 'medium' : 'large'}
+                    sx={{ 
+                      mt: { xs: 2, md: 3 }, 
+                      mb: 2,
+                      py: { xs: 1.5, md: 2 }
+                    }}
+                  >
+                    Sign Up
+                  </Button>
+                </Grid>
+              </Grid>
+
+              <Box sx={{ 
+                textAlign: 'center',
+                mt: { xs: 2, md: 3 }
+              }}>
+                <Link
+                  component={RouterLink}
+                  to="/login"
+                  variant="body2"
+                  sx={{ textDecoration: 'none' }}
+                >
+                  Already have an account? Login
+                </Link>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Right side - Welcome image */}
+          <Box
+            sx={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: '#000',
+              color: '#fff',
+              backgroundImage: 'linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url(https://images.unsplash.com/photo-1516321318423-f06f85e504b3)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              p: { xs: 3, sm: 4 },
+              textAlign: 'center',
+              minHeight: isMobile ? '200px' : 'auto'
+            }}
+          >
+            <Typography 
+              variant={isMobile ? 'h5' : 'h4'} 
+              gutterBottom
+            >
+              Welcome to DDU RMS
+            </Typography>
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                mb: 4,
+                display: { xs: 'none', sm: 'block' }
+              }}
+            >
+              Join our platform to manage university resources efficiently
+            </Typography>
+            <Button
+              component={RouterLink}
+              to="/"
+              variant="outlined"
+              color="inherit"
+              sx={{ mt: { xs: 1, sm: 2 } }}
+              startIcon={<span>←</span>}
+              size={isMobile ? 'small' : 'medium'}
+            >
+              Back to Home
+            </Button>
+          </Box>
+        </Box>
+      </Container>
+    </Box>
+  );
+}
+
+export default SignUp;
