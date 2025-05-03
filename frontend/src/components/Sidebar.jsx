@@ -127,7 +127,6 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
         return [
           ...commonItems,
           {
-<<<<<<< HEAD
             text: 'Assigned Resources',
             icon: <ResourcesIcon />,
             path: '/resources/assigned',
@@ -151,12 +150,6 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
               },
             ],
           },
-=======
-            text: 'Transfer Resources',
-            icon: <ResourcesIcon />,
-            path: '/resources/transfer',
-          },
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
         ];
 
       case 'school_dean':

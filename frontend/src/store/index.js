@@ -4,6 +4,7 @@ import resourceReducer from './slices/resourceSlice';
 import requestReducer from './slices/requestSlice';
 import userReducer from './slices/userSlice';
 import userManagementReducer from './slices/userManagementSlice';
+import notificationReducer from './slices/notificationSlice';
 
 const store = configureStore({
   reducer: {
@@ -11,7 +12,8 @@ const store = configureStore({
     resources: resourceReducer,
     requests: requestReducer,
     users: userReducer,
-    userManagement: userManagementReducer
+    userManagement: userManagementReducer,
+    notifications: notificationReducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -18,7 +18,11 @@ import {
   Card,
   CardContent,
   Grid,
-  Chip
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import axios from 'axios';
 import { getAssetManagerSchools } from '../../../../utils/assetManagerUtils';
@@ -33,6 +37,18 @@ const PendingRequests = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const handleViewRequest = (request) => {
+    setSelectedRequest(request);
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setSelectedRequest(null);
+  };
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -57,10 +73,12 @@ const PendingRequests = () => {
   const handleApprove = async (requestId) => {
     try {
       await axios.patch(`/api/resource-requests/${requestId}/status`, {
-        action: 'approve'
+        action: 'approve',
+        role: 'ddu_asset_manager'
       });
       
       setRequests(requests.filter(req => req._id !== requestId));
+      setError(null);
     } catch (err) {
       setError('Failed to approve request. Please try again.');
     }
@@ -69,10 +87,12 @@ const PendingRequests = () => {
   const handleReject = async (requestId) => {
     try {
       await axios.patch(`/api/resource-requests/${requestId}/status`, {
-        action: 'reject'
+        action: 'reject',
+        role: 'ddu_asset_manager'
       });
       
       setRequests(requests.filter(req => req._id !== requestId));
+      setError(null);
     } catch (err) {
       setError('Failed to reject request. Please try again.');
     }
@@ -323,6 +343,114 @@ const PendingRequests = () => {
                       </Typography>
                     </Paper>
                   </Grid>
+                </Grid>
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseDialog}>Close</Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => {
+                  handleApprove(selectedRequest._id);
+                  handleCloseDialog();
+                }}
+              >
+                Approve
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => {
+                  handleReject(selectedRequest._id);
+                  handleCloseDialog();
+                }}
+              >
+                Reject
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
+      {/* Request Details Dialog */}
+      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+        {selectedRequest && (
+          <>
+            <DialogTitle>
+              Request Details - {selectedRequest.requestNumber}
+            </DialogTitle>
+            <DialogContent>
+              <Box sx={{ p: 2 }}>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Requested By
+                    </Typography>
+                    <Typography variant="body1" gutterBottom>
+                      {selectedRequest.requestedBy?.fullName || 'Unknown'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Department
+                    </Typography>
+                    <Typography variant="body1" gutterBottom>
+                      {selectedRequest.department || 'N/A'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Date Requested
+                    </Typography>
+                    <Typography variant="body1" gutterBottom>
+                      {new Date(selectedRequest.createdAt).toLocaleDateString()}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                      Requested Items
+                    </Typography>
+                    <TableContainer component={Paper} variant="outlined">
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Item</TableCell>
+                            <TableCell>Description</TableCell>
+                            <TableCell align="right">Quantity</TableCell>
+                            <TableCell align="right">Unit Price</TableCell>
+                            <TableCell align="right">Total Amount</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {selectedRequest.requestedItems.map((item, index) => (
+                            <TableRow key={index}>
+                              <TableCell>{item.itemNo}</TableCell>
+                              <TableCell>{item.description}</TableCell>
+                              <TableCell align="right">{item.quantityRequested}</TableCell>
+                              <TableCell align="right">
+                                {item.unitPrice?.birr || 0} Birr
+                              </TableCell>
+                              <TableCell align="right">
+                                {item.totalAmount?.birr || 0} Birr
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Grid>
+                  {selectedRequest.remark && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" color="textSecondary">
+                        Remarks
+                      </Typography>
+                      <Paper variant="outlined" sx={{ p: 2, mt: 1 }}>
+                        <Typography variant="body1">
+                          {selectedRequest.remark}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                  )}
                 </Grid>
               </Box>
             </DialogContent>

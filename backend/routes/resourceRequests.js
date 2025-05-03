@@ -1,12 +1,17 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
+const auth = require('../middleware/auth');
+const Notification = require('../models/Notification');
 const User = require('../models/User');
 const ResourceRequest = require('../models/ResourceRequest');
-const auth = require('../middleware/auth');
 const { SCHOOLS, SCHOOL_DEPARTMENTS } = require('../constants/schools');
+const { sendNotification } = require('../socket/socketServer');
 
 // Create a new resource request
 router.post('/', auth, async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
     console.log('Received request body:', req.body);
     const { items } = req.body;
@@ -18,15 +23,9 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
-<<<<<<< HEAD
     // Get the requesting user's details with school information
     console.log('Finding requesting user with ID:', req.user._id);
     const requestingUser = await User.findById(req.user._id).populate('department').lean();
-=======
-    // Get the requesting user's details
-    console.log('Finding requesting user with ID:', req.user._id);
-    const requestingUser = await User.findById(req.user._id);
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
     
     if (!requestingUser) {
       console.error('Requesting user not found:', req.user._id);
@@ -89,14 +88,10 @@ router.post('/', auth, async (req, res) => {
     const resourceRequest = new ResourceRequest({
       requestNumber,
       requestedBy: req.user._id,
-<<<<<<< HEAD
       department: requestingUser.department,
-      school: requestingUser.school, // Add school information
-=======
-      department: req.user.department, // Add department information
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
+      school: requestingUser.school,
       requestedItems: items.map(item => ({
-        resource: item.resource,  // Resource ID is required
+        resource: item.resource,
         itemNo: item.itemNo,
         description: item.description,
         unitOfMeasure: item.unitOfMeasure,
@@ -134,50 +129,42 @@ router.post('/', auth, async (req, res) => {
       }
     });
 
-    try {
-      console.log('Attempting to save resource request...');
-      const savedRequest = await resourceRequest.save();
-      console.log('Resource request saved successfully:', savedRequest._id);
+    await resourceRequest.save({ session });
 
-      // Populate necessary fields for response
-      const populatedRequest = await ResourceRequest.findById(savedRequest._id)
-        .populate('requestedBy', 'fullName department')
-        .populate('assignedTo.userId', 'fullName department role');
+    // Create notification for department head
+    const notification = new Notification({
+      recipient: departmentHead._id,
+      type: 'resource_request',
+      title: 'New Resource Request',
+      message: `New resource request ${requestNumber} from ${requestingUser.fullName}`,
+      relatedRequest: resourceRequest._id,
+      department: requestingUser.department
+    });
 
-      res.status(201).json({
-        success: true,
-        message: 'Resource request created successfully',
-        data: populatedRequest
-      });
-    } catch (error) {
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
+    await notification.save({ session });
 
-      if (error.name === 'ValidationError') {
-        const validationErrors = Object.values(error.errors).map(err => ({
-          field: err.path,
-          message: err.message,
-          value: err.value
-        }));
-        console.error('Validation errors:', validationErrors);
-        
-        return res.status(400).json({
-          success: false,
-          message: 'Validation error',
-          errors: validationErrors
-        });
-      }
+    // Send real-time notification
+    await sendNotification({
+      ...notification.toObject(),
+      recipient: departmentHead._id,
+      department: requestingUser.department
+    });
 
-      res.status(500).json({
-        success: false,
-        message: 'Error creating resource request',
-        error: error.message
-      });
-    }
+    await session.commitTransaction();
+
+    // Populate necessary fields for response
+    const populatedRequest = await ResourceRequest.findById(resourceRequest._id)
+      .populate('requestedBy', 'fullName department')
+      .populate('assignedTo.userId', 'fullName department role');
+
+    res.status(201).json({
+      success: true,
+      message: 'Resource request created successfully',
+      data: populatedRequest
+    });
+  
   } catch (error) {
+    await session.abortTransaction();
     console.error('Unhandled error in request creation:', {
       name: error.name,
       message: error.message,
@@ -189,6 +176,8 @@ router.post('/', auth, async (req, res) => {
       message: 'Error creating resource request',
       error: error.message
     });
+  } finally {
+    session.endSession();
   }
 });
 
@@ -203,12 +192,8 @@ router.get('/', auth, async (req, res) => {
     console.log('Full user details:', user);
 
     // Role-based filtering
-<<<<<<< HEAD
     const role = req.query.role || req.user.role;
     switch (role) {
-=======
-    switch (req.user.role) {
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
       case 'department_head':
         // Department heads see requests from their department
         filter['department'] = department || req.user.department;
@@ -264,7 +249,6 @@ router.get('/', auth, async (req, res) => {
         filter['requestedBy'] = req.user._id;
         break;
 
-<<<<<<< HEAD
       case 'ddu_asset_manager':
         // DDU Asset Managers see requests from Business and Health schools that are approved by deans
         filter['school'] = { $in: [SCHOOLS.BUSINESS, SCHOOLS.HEALTH] };
@@ -281,8 +265,6 @@ router.get('/', auth, async (req, res) => {
         filter['status'] = { $ne: 'rejected' };
         break;
 
-=======
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
       default:
         // For other roles (if any)
         if (status) filter['status'] = status;
@@ -298,7 +280,6 @@ router.get('/', auth, async (req, res) => {
     console.log('Department head filter:', filter);
     
     const requests = await ResourceRequest.find(filter)
-<<<<<<< HEAD
       .populate({
         path: 'requestedBy',
         select: 'fullName department school'
@@ -327,12 +308,6 @@ router.get('/', auth, async (req, res) => {
           request.schoolDeanStatus
       };
     });
-=======
-      .populate('requestedBy', 'fullName department')
-      .sort({ createdAt: -1 })
-      .select('-__v')
-      .lean();
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
     
     console.log('Found requests for department head:', requests.length);
 
@@ -340,11 +315,7 @@ router.get('/', auth, async (req, res) => {
 
     res.json({
       success: true,
-<<<<<<< HEAD
       data: transformedRequests
-=======
-      data: requests
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
     });
   } catch (error) {
     console.error('Error fetching requests:', error);
@@ -454,7 +425,12 @@ router.patch('/:requestId/status', auth, async (req, res) => {
           });
         }
         updateData.schoolDeanStatus = newStatus;
-<<<<<<< HEAD
+        // If rejected by school dean, update overall status
+        if (newStatus === 'rejected') {
+          updateData.status = 'rejected';
+        } else if (newStatus === 'approved') {
+          updateData.status = 'approved';
+        }
         break;
 
       case 'ddu_asset_manager':
@@ -479,8 +455,6 @@ router.patch('/:requestId/status', auth, async (req, res) => {
         }
 
         updateData.assetManagerStatus = newStatus;
-=======
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
         // Update overall status based on school dean's decision
         updateData.status = newStatus;
         break;
@@ -492,24 +466,136 @@ router.patch('/:requestId/status', auth, async (req, res) => {
         });
     }
 
-    // Update the request
-    const updatedRequest = await ResourceRequest.findByIdAndUpdate(
-      requestId,
-      { $set: updateData },
-      { new: true }
-    ).populate('requestedBy', 'fullName department');
+    // Start a transaction for atomic updates
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    res.json({
-      success: true,
-      message: `Request ${action}ed successfully`,
-      data: updatedRequest
-    });
+    try {
+      console.log('Updating request:', { requestId, updateData });
+      
+      // Update the request
+      const updatedRequest = await ResourceRequest.findByIdAndUpdate(
+        requestId,
+        { $set: updateData },
+        { new: true, session }
+      ).populate('requestedBy', 'fullName department');
+
+      if (!updatedRequest) {
+        await session.abortTransaction();
+        return res.status(404).json({
+          success: false,
+          message: 'Request not found'
+        });
+      }
+
+      // Create and send notifications based on the role and action
+      const notifications = [];
+
+      // Notification for the staff member who created the request
+      const staffNotification = new Notification({
+        recipient: updatedRequest.requestedBy._id,
+        type: action === 'approve' ? 'success' : 'error',
+        title: `Request ${action === 'approve' ? 'Approved' : 'Rejected'}`,
+        message: `Your resource request ${updatedRequest.requestNumber} has been ${action}ed by ${req.user.role === 'department_head' ? 'Department Head' : req.user.role === 'school_dean' ? 'School Dean' : 'Asset Manager'}`,
+        relatedRequest: updatedRequest._id
+      });
+      notifications.push(staffNotification);
+
+      // If department head approves, notify school dean
+      if (req.user.role === 'department_head' && action === 'approve') {
+        const schoolDean = await User.findOne({
+          role: 'school_dean',
+          school: updatedRequest.school
+        });
+
+        if (schoolDean) {
+          const deanNotification = new Notification({
+            recipient: schoolDean._id,
+            type: 'resource_request',
+            title: 'New Request for Review',
+            message: `A new resource request ${updatedRequest.requestNumber} from ${updatedRequest.department} department needs your review`,
+            relatedRequest: updatedRequest._id,
+            school: updatedRequest.school,
+            role: 'school_dean'
+          });
+          notifications.push(deanNotification);
+        }
+      }
+
+      // If school dean approves, notify asset manager
+      if (req.user.role === 'school_dean' && action === 'approve') {
+        const assetManagerRole = updatedRequest.school === SCHOOLS.COMPUTING ?
+          'iot_asset_manager' : 'ddu_asset_manager';
+
+        const assetManager = await User.findOne({
+          role: assetManagerRole,
+          status: 'approved'
+        });
+
+        if (assetManager) {
+          const managerNotification = new Notification({
+            recipient: assetManager._id,
+            type: 'resource_request',
+            title: 'New Request for Review',
+            message: `A new resource request ${updatedRequest.requestNumber} from ${updatedRequest.department} department needs your review`,
+            relatedRequest: updatedRequest._id,
+            role: assetManagerRole
+          });
+          notifications.push(managerNotification);
+        }
+      }
+
+      try {
+        // Save notifications and send them via socket
+        const savedNotifications = await Notification.insertMany(notifications, { session });
+        
+        // Send each notification via socket
+        for (const notification of savedNotifications) {
+          await sendNotification(notification);
+        }
+
+        // Commit transaction
+        await session.commitTransaction();
+
+        // Send response after successful transaction
+        res.json({
+          success: true,
+          message: `Request ${action}ed successfully`,
+          data: updatedRequest
+        });
+
+        console.log(`Successfully sent ${savedNotifications.length} notifications`);
+      } catch (notificationError) {
+        console.error('Error sending notifications:', notificationError);
+        // Even if notification sending fails, we want to complete the request update
+        await session.commitTransaction();
+        res.json({
+          success: true,
+          message: `Request ${action}ed successfully`,
+          data: updatedRequest
+        });
+      }
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   } catch (error) {
     console.error('Error updating request status:', error);
     res.status(500).json({
       success: false,
-      message: 'Error updating request status'
+      message: error.message || 'Error updating request status'
     });
+    // Make sure to end the session on error
+    if (session) {
+      try {
+        await session.abortTransaction();
+        session.endSession();
+      } catch (sessionError) {
+        console.error('Error cleaning up session:', sessionError);
+      }
+    }
   }
 });
 

@@ -13,6 +13,7 @@ const authRoutes = require('../routes/auth');
 const adminRoutes = require('../routes/admin');
 const resourceRoutes = require('../routes/resource');
 const resourceRequestRoutes = require('../routes/resourceRequests');
+const notificationRoutes = require('../routes/notifications');
 
 const app = express();
 
@@ -94,6 +95,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/resource-requests', resourceRequestRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Handle undefined routes
 app.all('*', (req, res, next) => {

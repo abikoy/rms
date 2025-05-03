@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Box,
@@ -8,7 +8,6 @@ import {
   Menu,
   MenuItem,
   Avatar,
-  Badge,
   Tooltip,
   useTheme,
   ListItemIcon,
@@ -16,7 +15,6 @@ import {
 } from '@mui/material';
 import {
   Menu as MenuIcon,
-  Notifications as NotificationsIcon,
   Settings as SettingsIcon,
   Search as SearchIcon,
   Apps as AppsIcon,
@@ -26,11 +24,11 @@ import {
   Lock,
   VpnKey,
   PhotoCamera,
-  CheckCircle,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
+import NotificationMenu from './NotificationMenu';
 
 
 const Navbar = ({ onDrawerToggle }) => {
@@ -38,17 +36,15 @@ const Navbar = ({ onDrawerToggle }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const { items: notifications = [], unreadCount = 0 } = useSelector((state) => state.notifications) || {};
+
+
   
   const [anchorEl, setAnchorEl] = useState(null);
-  const [notificationsAnchor, setNotificationsAnchor] = useState(null);
   const [appsAnchor, setAppsAnchor] = useState(null);
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
-  };
-
-  const handleNotificationsOpen = (event) => {
-    setNotificationsAnchor(event.currentTarget);
   };
 
   const handleAppsMenuOpen = (event) => {
@@ -57,7 +53,6 @@ const Navbar = ({ onDrawerToggle }) => {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
-    setNotificationsAnchor(null);
     setAppsAnchor(null);
   };
 
@@ -168,35 +163,7 @@ const Navbar = ({ onDrawerToggle }) => {
         </Menu>
 
         {/* Notifications */}
-        <IconButton
-          size="large"
-          color="inherit"
-          onClick={handleNotificationsOpen}
-          sx={{ mr: 2 }}
-        >
-          <Badge badgeContent={4} color="error">
-            <NotificationsIcon />
-          </Badge>
-        </IconButton>
-        <Menu
-          anchorEl={notificationsAnchor}
-          open={Boolean(notificationsAnchor)}
-          onClose={handleMenuClose}
-          PaperProps={{
-            sx: { mt: 1.5, minWidth: 300 }
-          }}
-        >
-          <MenuItem>
-            <Typography variant="inherit" noWrap>
-              New resource request from John Doe
-            </Typography>
-          </MenuItem>
-          <MenuItem>
-            <Typography variant="inherit" noWrap>
-              Resource approval pending
-            </Typography>
-          </MenuItem>
-        </Menu>
+        <NotificationMenu />
 
         {/* Settings */}
         <IconButton

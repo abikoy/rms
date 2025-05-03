@@ -16,11 +16,8 @@ import {
   DialogContent,
   DialogActions,
   Alert,
-<<<<<<< HEAD
   Grid,
   TextField
-=======
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
 } from '@mui/material';
 import DashboardLayout from '../../components/DashboardLayout';
 import axios from 'axios';
@@ -30,11 +27,8 @@ const PendingRequests = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState(null);
-<<<<<<< HEAD
   const [actionType, setActionType] = useState(null);
   const [comment, setComment] = useState('');
-=======
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
 
   const fetchRequests = async () => {
     try {
@@ -54,11 +48,7 @@ const PendingRequests = () => {
 
   const handleAction = async (requestId, action) => {
     try {
-<<<<<<< HEAD
       await axios.patch(`/api/resource-requests/${requestId}/status`, { action, comment });
-=======
-      await axios.patch(`/api/resource-requests/${requestId}/status`, { action });
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
       setDialogOpen(false);
       setSelectedRequest(null);
       fetchRequests(); // Refresh the list
@@ -90,13 +80,8 @@ const PendingRequests = () => {
           <Table>
             <TableHead>
               <TableRow>
-<<<<<<< HEAD
                 <TableCell>Request ID</TableCell>
                 <TableCell>Resource Requested</TableCell>
-=======
-                <TableCell>Request Number</TableCell>
-                <TableCell>Department</TableCell>
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
                 <TableCell>Requested By</TableCell>
                 <TableCell>Items</TableCell>
                 <TableCell>Department Head Status</TableCell>
@@ -106,7 +91,6 @@ const PendingRequests = () => {
             <TableBody>
               {requests.map((request) => (
                 <TableRow key={request._id}>
-<<<<<<< HEAD
                   <TableCell>{request.idResource || request._id}</TableCell>
                   <TableCell>
                     {request.requestName || request.requestedItems?.[0]?.resource?.name || 'Unknown Resource'}
@@ -142,25 +126,6 @@ const PendingRequests = () => {
                         Review
                       </Button>
                     </Box>
-=======
-                  <TableCell>{request.requestNumber}</TableCell>
-                  <TableCell>{request.department}</TableCell>
-                  <TableCell>{request.requestedBy?.fullName}</TableCell>
-                  <TableCell>{request.requestedItems?.length || 0} items</TableCell>
-                  <TableCell>{getStatusChip(request.departmentHeadStatus)}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      size="small"
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setDialogOpen(true);
-                      }}
-                    >
-                      Review
-                    </Button>
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
                   </TableCell>
                 </TableRow>
               ))}
@@ -168,7 +133,6 @@ const PendingRequests = () => {
           </Table>
         </TableContainer>
 
-<<<<<<< HEAD
         <Dialog 
           open={dialogOpen} 
           onClose={() => setDialogOpen(false)}
@@ -276,27 +240,10 @@ const PendingRequests = () => {
                     sx={{ mt: 3 }}
                   />
                 )}
-=======
-        <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
-          <DialogTitle>Review Request</DialogTitle>
-          <DialogContent>
-            {selectedRequest && (
-              <Box sx={{ mt: 2 }}>
-                <Typography><strong>Request Number:</strong> {selectedRequest.requestNumber}</Typography>
-                <Typography><strong>Department:</strong> {selectedRequest.department}</Typography>
-                <Typography><strong>Requested By:</strong> {selectedRequest.requestedBy?.fullName}</Typography>
-                <Typography sx={{ mt: 2 }}><strong>Requested Items:</strong></Typography>
-                {selectedRequest.requestedItems?.map((item, index) => (
-                  <Box key={index} sx={{ ml: 2, mt: 1 }}>
-                    <Typography>• {item.description} - Quantity: {item.quantityRequested}</Typography>
-                  </Box>
-                ))}
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
               </Box>
             )}
           </DialogContent>
           <DialogActions>
-<<<<<<< HEAD
             <Button onClick={() => setDialogOpen(false)}>
               {actionType === 'view' ? 'Close' : 'Cancel'}
             </Button>
@@ -317,22 +264,6 @@ const PendingRequests = () => {
                 </Button>
               </>
             )}
-=======
-            <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button 
-              onClick={() => handleAction(selectedRequest?._id, 'reject')}
-              color="error"
-            >
-              Reject
-            </Button>
-            <Button 
-              onClick={() => handleAction(selectedRequest?._id, 'approve')}
-              color="primary"
-              variant="contained"
-            >
-              Approve
-            </Button>
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
           </DialogActions>
         </Dialog>
       </Box>

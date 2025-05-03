@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { Provider } from 'react-redux';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import * as notificationActions from './store/slices/notificationSlice';
 
 // Theme and Store
 import theme from './theme';
 import store from './store';
+import { initializeSocket, disconnectSocket } from './services/socketService';
 
 // Pages
 import Landing from './pages/landing/Landing';
@@ -29,13 +31,10 @@ import Profile from './pages/common/Profile';
 import TransferResources from './pages/resources/TransferResources';
 import AddIoTAsset from './pages/asset-managers/iot/AddIoTAsset';
 import AddDDUAsset from './pages/asset-managers/ddu/AddDDUAsset';
-<<<<<<< HEAD
 import DDUPendingRequests from './pages/asset-managers/ddu/requests/PendingRequests';
 import DDURequestHistory from './pages/asset-managers/ddu/requests/RequestHistory';
 import IOTPendingRequests from './pages/asset-managers/iot/requests/PendingRequests';
 import IOTRequestHistory from './pages/asset-managers/iot/requests/RequestHistory';
-=======
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
 import MyResources from './pages/staff/MyResources';
 import AvailableResources from './pages/staff/AvailableResources';
 import ResourceRequestForm from './pages/staff/ResourceRequestForm';
@@ -91,7 +90,47 @@ const StaffRoute = ({ children }) => {
 
 const AppContent = () => {
   const auth = useSelector((state) => state.auth);
-  
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    if (auth.isAuthenticated && auth.token) {
+      console.log('Initializing socket connection...');
+      // Initialize socket connection
+      const socket = initializeSocket(auth.token);
+
+      // Fetch initial notifications
+      dispatch(notificationActions.fetchNotifications());
+
+      // Listen for socket events
+      socket.on('connect', () => {
+        console.log('Socket connected successfully');
+        // Fetch notifications when socket connects
+        dispatch(notificationActions.fetchNotifications());
+      });
+
+      socket.on('notification', (notification) => {
+        console.log('Received notification:', notification);
+        dispatch(notificationActions.addNotification(notification));
+      });
+
+      socket.on('error', (error) => {
+        console.error('Socket error:', error);
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log('Socket disconnected:', reason);
+        // Fetch notifications when socket disconnects to ensure we don't miss any
+        dispatch(notificationActions.fetchNotifications());
+      });
+
+      // Cleanup on unmount
+      return () => {
+        console.log('Cleaning up socket connection...');
+        disconnectSocket();
+      };
+    }
+  }, [auth.isAuthenticated, auth.token, dispatch]);
+
   // Function to get the appropriate dashboard based on user role
   const getDashboardComponent = () => {
     switch (auth.user?.role) {
@@ -118,7 +157,6 @@ const AppContent = () => {
       {/* Public Routes */}
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/resources/transfer" element={<TransferResources />} />
       <Route path="/signup" element={<SignUp />} />
 
       {/* Protected Routes */}
@@ -135,7 +173,6 @@ const AppContent = () => {
       <Route path="/asset-managers/iot/add" element={<AdminRoute><AddIoTAsset /></AdminRoute>} />
       <Route path="/asset-managers/ddu/add" element={<AdminRoute><AddDDUAsset /></AdminRoute>} />
 
-<<<<<<< HEAD
       {/* DDU Asset Manager Routes */}
       <Route path="/asset-managers/ddu/requests/pending" element={<AdminRoute><DDUPendingRequests /></AdminRoute>} />
       <Route path="/asset-managers/ddu/requests/history" element={<AdminRoute><DDURequestHistory /></AdminRoute>} />
@@ -144,8 +181,6 @@ const AppContent = () => {
       <Route path="/asset-managers/iot/requests/pending" element={<AdminRoute><IOTPendingRequests /></AdminRoute>} />
       <Route path="/asset-managers/iot/requests/history" element={<AdminRoute><IOTRequestHistory /></AdminRoute>} />
 
-=======
->>>>>>> f15bed754d3a8305297a0a8e123271476d9d8394
       {/* Staff Routes */}
       <Route path="/staff/dashboard" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
       <Route path="/staff/my-resources" element={<StaffRoute><MyResources /></StaffRoute>} />
@@ -168,6 +203,9 @@ const AppContent = () => {
       <Route path="/school-dean/school-resources" element={<ProtectedRoute><SchoolResources /></ProtectedRoute>} />
       <Route path="/school-dean/available-resources" element={<ProtectedRoute><AvailableResources /></ProtectedRoute>} />
       <Route path="/school-dean/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
+      {/* Transfer Resources */}
+      <Route path="/resources/transfer" element={<ProtectedRoute><TransferResources /></ProtectedRoute>} />
 
       {/* Catch-all route for 404 */}
       <Route path="*" element={<Navigate to="/" />} />

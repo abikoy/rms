@@ -30,6 +30,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import DashboardLayout from '../../components/DashboardLayout';
 import { fetchResources, deleteResource } from '../../store/slices/resourceSlice';
 import ResourceRequestForm from '../staff/ResourceRequestForm';
@@ -90,6 +91,16 @@ const Resources = () => {
         console.error('Failed to delete resource:', error);
       }
     }
+  };
+
+  const handleAssign = (resource) => {
+    // Only allow assigning if resource is available
+    if (resource.status !== 'available') {
+      alert('This resource is not available for assignment');
+      return;
+    }
+    // Navigate to assignment page or open assignment dialog
+    navigate(`/resources/${resource._id}/assign`);
   };
 
   const handleRequestClick = (resource) => {
@@ -243,6 +254,17 @@ const Resources = () => {
                             <VisibilityIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
+                        {resource.status === 'available' && (
+                          <Tooltip title="Assign Resource">
+                            <IconButton
+                              size="small"
+                              color="success"
+                              onClick={() => handleAssign(resource)}
+                            >
+                              <AssignmentIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         {resource.managerType === userRole && (
                           <>
                             <Tooltip title="Edit">
