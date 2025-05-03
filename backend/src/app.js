@@ -14,6 +14,7 @@ const adminRoutes = require('../routes/admin');
 const resourceRoutes = require('../routes/resource');
 const resourceRequestRoutes = require('../routes/resourceRequests');
 const notificationRoutes = require('../routes/notifications');
+const assetAssignmentRoutes = require('../routes/assetAssignments');
 
 const app = express();
 
@@ -96,6 +97,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/resource-requests', resourceRequestRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/asset-assignments', assetAssignmentRoutes);
 
 // Handle undefined routes
 app.all('*', (req, res, next) => {

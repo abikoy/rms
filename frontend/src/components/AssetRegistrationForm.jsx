@@ -155,7 +155,7 @@ const AssetRegistrationForm = ({ assetManagerType }) => {
       const resourceData = {
         name: formData.assetName,
         serialNumber: formData.serialNumber,
-        type: formData.assetType,
+        type: formData.assetType, // This will now be 'fixed_assets' or 'non_fixed_assets'
         assetClass: formData.assetClass,
         model: formData.assetModel,
         location: formData.location,
@@ -190,7 +190,7 @@ const AssetRegistrationForm = ({ assetManagerType }) => {
       
       if (createResource.fulfilled.match(resultAction)) {
         // Success case
-        setSnackbarMessage('Asset has been registered successfully! 🎉');
+        setSnackbarMessage('Asset has been registered successfully! ');
         setSnackbarSeverity('success');
         setOpenSnackbar(true);
         
@@ -291,7 +291,7 @@ const AssetRegistrationForm = ({ assetManagerType }) => {
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <FormControl fullWidth required>
+            <FormControl fullWidth required error={!formData.assetType}>
               <InputLabel>Asset Type</InputLabel>
               <Select
                 name="assetType"
@@ -302,6 +302,9 @@ const AssetRegistrationForm = ({ assetManagerType }) => {
                 <MenuItem value="fixed_assets">Fixed Assets</MenuItem>
                 <MenuItem value="non_fixed_assets">Non-Fixed Assets</MenuItem>
               </Select>
+              {!formData.assetType && (
+                <FormHelperText>Please select an asset type</FormHelperText>
+              )}
             </FormControl>
           </Grid>
           <Grid item xs={12} md={6}>

@@ -13,7 +13,8 @@ const resourceSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['fixed_assets', 'non_fixed_assets']
+    enum: ['fixed_assets', 'non_fixed_assets'],
+    default: 'fixed_assets'
   },
   assetClass: {
     type: String,

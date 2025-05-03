@@ -4,7 +4,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { Provider } from 'react-redux';
 import { useSelector, useDispatch } from 'react-redux';
-import * as notificationActions from './store/slices/notificationSlice';
+import { fetchNotifications, addNotification } from './store/slices/notificationSlice';
 
 // Theme and Store
 import theme from './theme';
@@ -29,6 +29,8 @@ import EditResource from './pages/admin/EditResource';
 import Settings from './pages/admin/Settings';
 import Profile from './pages/common/Profile';
 import TransferResources from './pages/resources/TransferResources';
+import AssignResourcePage from './pages/resources/AssignResourcePage';
+import AssignedResourcesPage from './pages/resources/AssignedResourcesPage';
 import AddIoTAsset from './pages/asset-managers/iot/AddIoTAsset';
 import AddDDUAsset from './pages/asset-managers/ddu/AddDDUAsset';
 import DDUPendingRequests from './pages/asset-managers/ddu/requests/PendingRequests';
@@ -89,28 +91,29 @@ const StaffRoute = ({ children }) => {
 };
 
 const AppContent = () => {
-  const auth = useSelector((state) => state.auth);
   const dispatch = useDispatch();
+  const auth = useSelector((state) => state.auth);
+  const { isAuthenticated, user, token } = auth;
 
   useEffect(() => {
-    if (auth.isAuthenticated && auth.token) {
-      console.log('Initializing socket connection...');
+    if (isAuthenticated && token) {
       // Initialize socket connection
-      const socket = initializeSocket(auth.token);
+      const socket = initializeSocket(token);
 
       // Fetch initial notifications
-      dispatch(notificationActions.fetchNotifications());
+      dispatch(fetchNotifications());
 
       // Listen for socket events
       socket.on('connect', () => {
-        console.log('Socket connected successfully');
+        console.log('Socket connected');
         // Fetch notifications when socket connects
-        dispatch(notificationActions.fetchNotifications());
+        dispatch(fetchNotifications());
       });
 
       socket.on('notification', (notification) => {
         console.log('Received notification:', notification);
-        dispatch(notificationActions.addNotification(notification));
+        // Add notification to store
+        dispatch(addNotification(notification));
       });
 
       socket.on('error', (error) => {
@@ -120,16 +123,15 @@ const AppContent = () => {
       socket.on('disconnect', (reason) => {
         console.log('Socket disconnected:', reason);
         // Fetch notifications when socket disconnects to ensure we don't miss any
-        dispatch(notificationActions.fetchNotifications());
+        dispatch(fetchNotifications());
       });
 
       // Cleanup on unmount
       return () => {
-        console.log('Cleaning up socket connection...');
         disconnectSocket();
       };
     }
-  }, [auth.isAuthenticated, auth.token, dispatch]);
+  }, [dispatch, isAuthenticated, token]);
 
   // Function to get the appropriate dashboard based on user role
   const getDashboardComponent = () => {
@@ -169,6 +171,8 @@ const AppContent = () => {
       <Route path="/resources" element={<AdminRoute><Resources /></AdminRoute>} />
       <Route path="/resources/:id" element={<AdminRoute><ResourceDetails /></AdminRoute>} />
       <Route path="/resources/:id/edit" element={<AdminRoute><EditResource /></AdminRoute>} />
+      <Route path="/resources/:id/assign" element={<AdminRoute><AssignResourcePage /></AdminRoute>} />
+      <Route path="/resources/assigned" element={<AdminRoute><AssignedResourcesPage /></AdminRoute>} />
       <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
       <Route path="/asset-managers/iot/add" element={<AdminRoute><AddIoTAsset /></AdminRoute>} />
       <Route path="/asset-managers/ddu/add" element={<AdminRoute><AddDDUAsset /></AdminRoute>} />

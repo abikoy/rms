@@ -19,7 +19,7 @@ router.post('/', auth, async (req, res) => {
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Request must include at least one item'
+        message: 'Please provide at least one item'
       });
     }
 
@@ -370,6 +370,60 @@ router.get('/assigned-requests', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching assigned requests'
+    });
+  }
+});
+
+// Get a single resource request by request number
+router.get('/:requestNumber', auth, async (req, res) => {
+  try {
+    const request = await ResourceRequest.findOne({ 
+      requestNumber: req.params.requestNumber 
+    }).populate('requestedBy', 'fullName department');
+
+    if (!request) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Request not found',
+        details: {
+          notFound: true,
+          requestNumber: req.params.requestNumber
+        }
+      });
+    }
+
+    // Get department head for the requester's department
+    const departmentHead = await User.findOne({
+      department: request.department,
+      role: 'department_head',
+      status: 'approved'
+    }).select('fullName department');
+
+    res.json({
+      status: 'success',
+      data: {
+        requestId: request.requestNumber,
+        requestedBy: {
+          name: request.requestedBy.fullName,
+          department: request.department
+        },
+        departmentHead: departmentHead ? {
+          name: departmentHead.fullName,
+          department: departmentHead.department
+        } : {
+          name: 'Not Assigned',
+          department: 'N/A'
+        },
+        division: request.department,
+        status: request.status
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching resource request:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch resource request details',
+      error: error.message
     });
   }
 });

@@ -1,42 +1,36 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { API_BASE_URL } from '../../config';
-import { getAuthHeader } from '../../utils/auth';
 
-// Fetch notifications
+// Create async thunks
 export const fetchNotifications = createAsyncThunk(
   'notifications/fetchNotifications',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('Fetching notifications...');
-      const config = getAuthHeader();
-      console.log('Auth header:', config);
-      
-      const response = await axios.get(`${API_BASE_URL}/api/notifications`, config);
-      console.log('Notifications response:', response.data);
-      
-      if (response.data.status === 'success') {
-        return response.data;
-      } else {
-        throw new Error(response.data.message || 'Failed to fetch notifications');
-      }
+      const response = await axios.get(`${API_BASE_URL}/api/notifications`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      return response.data;
     } catch (error) {
-      console.error('Error fetching notifications:', error.response || error);
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch notifications');
     }
   }
 );
 
-// Mark notification as read
 export const markNotificationAsRead = createAsyncThunk(
   'notifications/markAsRead',
   async (notificationId, { rejectWithValue }) => {
     try {
-      const config = getAuthHeader();
       const response = await axios.patch(
         `${API_BASE_URL}/api/notifications/${notificationId}/read`,
         {},
-        config
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
       );
       return response.data;
     } catch (error) {
@@ -45,16 +39,18 @@ export const markNotificationAsRead = createAsyncThunk(
   }
 );
 
-// Mark all notifications as read
 export const markAllNotificationsAsRead = createAsyncThunk(
   'notifications/markAllAsRead',
   async (_, { rejectWithValue }) => {
     try {
-      const config = getAuthHeader();
       const response = await axios.patch(
         `${API_BASE_URL}/api/notifications/read-all`,
         {},
-        config
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
       );
       return response.data;
     } catch (error) {
@@ -63,6 +59,7 @@ export const markAllNotificationsAsRead = createAsyncThunk(
   }
 );
 
+// Create slice
 const notificationSlice = createSlice({
   name: 'notifications',
   initialState: {
@@ -106,7 +103,6 @@ const notificationSlice = createSlice({
         }
       })
       .addCase(fetchNotifications.fulfilled, (state, action) => {
-        console.log('Notifications fetched successfully:', action.payload);
         state.loading = false;
         state.error = null;
         state.initialized = true;
@@ -178,5 +174,6 @@ const notificationSlice = createSlice({
   }
 });
 
+// Export actions and reducer
 export const { addNotification, clearError, updateUnreadCount } = notificationSlice.actions;
 export default notificationSlice.reducer;

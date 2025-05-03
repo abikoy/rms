@@ -94,12 +94,6 @@ const Resources = () => {
   };
 
   const handleAssign = (resource) => {
-    // Only allow assigning if resource is available
-    if (resource.status !== 'available') {
-      alert('This resource is not available for assignment');
-      return;
-    }
-    // Navigate to assignment page or open assignment dialog
     navigate(`/resources/${resource._id}/assign`);
   };
 
@@ -174,7 +168,7 @@ const Resources = () => {
               label="Asset Type"
               onChange={handleAssetTypeChange}
             >
-              <MenuItem value="all">All resources</MenuItem>
+              <MenuItem value="">All</MenuItem>
               <MenuItem value="fixed_assets">Fixed Assets</MenuItem>
               <MenuItem value="non_fixed_assets">Non-Fixed Assets</MenuItem>
             </Select>
@@ -254,7 +248,8 @@ const Resources = () => {
                             <VisibilityIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        {resource.status === 'available' && (
+                        {resource.status === 'available' && 
+                         (userRole === 'ddu_asset_manager' || userRole === 'iot_asset_manager') && (
                           <Tooltip title="Assign Resource">
                             <IconButton
                               size="small"
@@ -283,15 +278,6 @@ const Resources = () => {
                                 onClick={() => handleDelete(resource._id)}
                               >
                                 <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Request">
-                              <IconButton
-                                size="small"
-                                color="primary"
-                                onClick={() => handleRequestClick(resource)}
-                              >
-                                <AddIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                           </>
