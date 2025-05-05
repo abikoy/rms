@@ -36,6 +36,31 @@ router.post('/', auth, async (req, res) => {
             throw new Error(`Cannot assign more than available quantity. Available: ${resource.quantity}, Requested: ${totalRequestedQuantity}`);
         }
 
+        // Validate expiration date for non-fixed assets
+        if (resource.type === 'non_fixed_assets') {
+            const expirationDate = items[0]?.expirationDate;
+            if (!expirationDate) {
+                throw new Error('Please select an expiration date for this non-fixed asset');
+            }
+
+            // Ensure expiration date is in the future
+            const tomorrow = new Date();
+            tomorrow.setHours(0, 0, 0, 0);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            if (new Date(expirationDate) < tomorrow) {
+                const tomorrowFormatted = tomorrow.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                throw new Error(`Please select a date starting from ${tomorrowFormatted} for this non-fixed asset`);
+            }
+
+            // Update resource expiration date
+            resource.expirationDate = expirationDate;
+        }
+
         // Create the assignment
         const assignment = new AssetAssignment({
             resource: resourceId,
@@ -46,24 +71,30 @@ router.post('/', auth, async (req, res) => {
             receivedBy,
             certifiedBy,
             status: 'assigned',
-            assignedBy: req.user._id, // Set the assignedBy to the current user's ID
+            assignedBy: req.user._id,
             assignedAt: new Date()
         });
 
         // Save the assignment
         await assignment.save({ session });
 
-        // Update resource quantity
+        // Update resource status and quantity
+        resource.status = 'assigned';
         resource.quantity -= totalRequestedQuantity;
         await resource.save({ session });
 
         // Commit transaction
         await session.commitTransaction();
 
+        // Fetch the complete assignment with populated fields
+        const populatedAssignment = await AssetAssignment.findById(assignment._id)
+            .populate('resource', 'name serialNumber status type expirationDate')
+            .populate('assignedBy', 'fullName email role department');
+
         res.status(201).json({
             status: 'success',
             message: 'Asset assigned successfully',
-            data: assignment
+            data: populatedAssignment
         });
     } catch (error) {
         // Abort transaction on error
@@ -113,7 +144,7 @@ router.get('/', auth, async (req, res) => {
         const assignments = await AssetAssignment.find(query)
             .populate({
                 path: 'resource',
-                select: 'name serialNumber status school'
+                select: 'name serialNumber status type expirationDate'
             })
             .populate({
                 path: 'assignedBy',
@@ -127,6 +158,9 @@ router.get('/', auth, async (req, res) => {
                 id: assignment._id,
                 resourceName: assignment.resource?.name || 'N/A',
                 serialNumber: assignment.resource?.serialNumber || 'N/A',
+                type: assignment.resource?.type || 'N/A',
+                expirationDate: assignment.resource?.expirationDate,
+                isNonFixed: assignment.resource?.type === 'non_fixed_assets',
                 department: assignment.requisitionDivision,
                 requestedBy: assignment.requestedBy?.name || 'N/A',
                 status: assignment.status,
@@ -155,7 +189,10 @@ router.get('/', auth, async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
     try {
         const assignment = await AssetAssignment.findById(req.params.id)
-            .populate('resource')
+            .populate({
+                path: 'resource',
+                select: 'name serialNumber status school type expirationDate'
+            })
             .populate('assignedBy', 'name email');
 
         if (!assignment) {
@@ -174,6 +211,66 @@ router.get('/:id', auth, async (req, res) => {
             status: 'error',
             message: error.message
         });
+    }
+});
+
+// Delete an asset assignment
+router.delete('/:id', auth, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        // Find the assignment
+        const assignment = await AssetAssignment.findById(req.params.id)
+            .populate('resource')
+            .session(session);
+
+        if (!assignment) {
+            throw new Error('Assignment not found');
+        }
+
+        // Check if user has permission (only the same department manager can delete)
+        const user = await User.findById(req.user._id).select('role');
+        const assignedByUser = await User.findById(assignment.assignedBy).select('role');
+        
+        if (user.role !== assignedByUser.role && user.role !== 'system_admin') {
+            throw new Error('You do not have permission to delete this assignment');
+        }
+
+        // Get the resource and update its status
+        const resource = assignment.resource;
+        const totalQuantity = assignment.items.reduce((total, item) => total + item.quantity, 0);
+        
+        // Update resource
+        resource.status = 'available';
+        resource.quantity += totalQuantity;
+        if (resource.type === 'non_fixed_assets') {
+            resource.expirationDate = null;
+        }
+        
+        await resource.save({ session });
+
+        // Delete the assignment
+        await assignment.deleteOne({ session });
+
+        // Commit transaction
+        await session.commitTransaction();
+
+        res.json({
+            status: 'success',
+            message: 'Assignment deleted successfully'
+        });
+    } catch (error) {
+        // Abort transaction on error
+        await session.abortTransaction();
+        
+        console.error('Error deleting assignment:', error);
+        res.status(400).json({
+            status: 'error',
+            message: error.message || 'Failed to delete assignment'
+        });
+    } finally {
+        session.endSession();
     }
 });
 

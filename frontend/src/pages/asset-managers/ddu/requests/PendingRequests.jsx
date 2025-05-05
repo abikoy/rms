@@ -22,7 +22,9 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Alert,
+  Snackbar
 } from '@mui/material';
 import axios from 'axios';
 import { getAssetManagerSchools } from '../../../../utils/assetManagerUtils';
@@ -39,6 +41,13 @@ const PendingRequests = () => {
   const [error, setError] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const handleViewRequest = (request) => {
     setSelectedRequest(request);
@@ -53,7 +62,7 @@ const PendingRequests = () => {
   useEffect(() => {
     const fetchRequests = async () => {
       try {
-        const response = await axios.get('/api/resource-requests', {
+        const response = await axios.get('http://localhost:5003/api/resource-requests', {
           params: {
             status: 'pending',
             role: 'ddu_asset_manager'
@@ -70,31 +79,65 @@ const PendingRequests = () => {
     fetchRequests();
   }, []);
 
+  const handleConfirmAction = (action, requestId) => {
+    setConfirmAction({ action, requestId });
+    setConfirmDialogOpen(true);
+  };
+
+  const handleConfirmClose = () => {
+    setConfirmDialogOpen(false);
+    setConfirmAction(null);
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
   const handleApprove = async (requestId) => {
     try {
-      await axios.patch(`/api/resource-requests/${requestId}/status`, {
+      await axios.patch(`http://localhost:5003/api/resource-requests/${requestId}/status`, {
         action: 'approve',
         role: 'ddu_asset_manager'
       });
       
       setRequests(requests.filter(req => req._id !== requestId));
       setError(null);
+      setSnackbar({
+        open: true,
+        message: 'Request approved successfully',
+        severity: 'success'
+      });
     } catch (err) {
       setError('Failed to approve request. Please try again.');
+      setSnackbar({
+        open: true,
+        message: 'Failed to approve request',
+        severity: 'error'
+      });
     }
   };
 
   const handleReject = async (requestId) => {
     try {
-      await axios.patch(`/api/resource-requests/${requestId}/status`, {
+      await axios.patch(`http://localhost:5003/api/resource-requests/${requestId}/status`, {
         action: 'reject',
         role: 'ddu_asset_manager'
       });
       
       setRequests(requests.filter(req => req._id !== requestId));
       setError(null);
+      setSnackbar({
+        open: true,
+        message: 'Request rejected successfully',
+        severity: 'success'
+      });
     } catch (err) {
       setError('Failed to reject request. Please try again.');
+      setSnackbar({
+        open: true,
+        message: 'Failed to reject request',
+        severity: 'error'
+      });
     }
   };
 
@@ -480,6 +523,54 @@ const PendingRequests = () => {
           </>
         )}
       </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmDialogOpen} onClose={handleConfirmClose}>
+        <DialogTitle>
+          {confirmAction?.action === 'approve' ? 'Approve Request' : 'Reject Request'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            {confirmAction?.action === 'approve'
+              ? 'Are you sure you want to approve this request?'
+              : 'Are you sure you want to reject this request?'}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleConfirmClose}>Cancel</Button>
+          <Button
+            variant="contained"
+            color={confirmAction?.action === 'approve' ? 'primary' : 'error'}
+            onClick={() => {
+              if (confirmAction?.action === 'approve') {
+                handleApprove(confirmAction.requestId);
+              } else {
+                handleReject(confirmAction.requestId);
+              }
+              handleConfirmClose();
+              handleCloseDialog();
+            }}
+          >
+            {confirmAction?.action === 'approve' ? 'Approve' : 'Reject'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Success/Error Alert */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </DashboardLayout>
   );
 };

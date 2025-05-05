@@ -51,6 +51,27 @@ const resourceSchema = new mongoose.Schema({
     enum: ['available', 'assigned', 'maintenance'],
     default: 'available'
   },
+  expirationDate: {
+    type: Date,
+    // Only required if type is non_fixed_assets and status is assigned
+    validate: {
+      validator: function(value) {
+        if (this.type === 'non_fixed_assets' && this.status === 'assigned') {
+          // Check if date exists and is in the future
+          if (!value) return false;
+          
+          // Get tomorrow's date (start of day)
+          const tomorrow = new Date();
+          tomorrow.setHours(0, 0, 0, 0);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          
+          return value >= tomorrow;
+        }
+        return true;
+      },
+      message: 'Expiration date must be set to a future date (at least tomorrow) for non-fixed assets'
+    }
+  },
   managerType: {
     type: String,
     required: true,
@@ -127,6 +148,23 @@ const resourceSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+// Add pre-save middleware to update status when quantity becomes 0
+resourceSchema.pre('save', function(next) {
+  if (this.quantity === 0) {
+    this.status = 'assigned';
+  }
+  next();
+});
+
+// Add pre-findOneAndUpdate middleware to handle updates
+resourceSchema.pre('findOneAndUpdate', function(next) {
+  const update = this.getUpdate();
+  if (update.quantity === 0) {
+    update.status = 'assigned';
+  }
+  next();
 });
 
 module.exports = mongoose.model('Resource', resourceSchema);

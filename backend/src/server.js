@@ -8,6 +8,7 @@ const resourceRoutes = require('../routes/resource');
 const resourceRequestRoutes = require('../routes/resourceRequests');
 const userRoutes = require('../routes/user');
 const notificationRoutes = require('../routes/notifications');
+const assetAssignmentRoutes = require('../routes/assetAssignments');
 
 const app = require('./app');
 
@@ -15,9 +16,10 @@ app.use('/api/resources', resourceRoutes);
 app.use('/api/resource-requests', resourceRequestRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/asset-assignments', assetAssignmentRoutes);
 
 process.on('uncaughtException', err => {
-  console.log('UNCAUGHT EXCEPTION! 💥 Shutting down...');
+  console.log('UNCAUGHT EXCEPTION! Shutting down...');
   console.log(err.name, err.message);
   process.exit(1);
 });
@@ -26,7 +28,7 @@ const DB = process.env.DATABASE_ONLINE;
 
 mongoose
   .connect(DB)
-  .then(() => console.log('Database connection successful! 🎉'))
+  .then(() => console.log('Database connection successful!✅✅✅ '))
   .catch(err => console.error('Database connection error:', err));
 
 const port = process.env.PORT || 5000;
@@ -39,7 +41,7 @@ const { initializeSocket } = require('../socket/socketServer');
 initializeSocket(server);
 
 process.on('unhandledRejection', err => {
-  console.log('UNHANDLED REJECTION! 💥 Shutting down...');
+  console.log('UNHANDLED REJECTION! 👹👹👹Shutting down...');
   console.log(err.name, err.message);
   server.close(() => {
     process.exit(1);
@@ -47,8 +49,8 @@ process.on('unhandledRejection', err => {
 });
 
 process.on('SIGTERM', () => {
-  console.log('👋 SIGTERM RECEIVED. Shutting down gracefully');
+  console.log(' SIGTERM RECEIVED. Shutting down gracefully');
   server.close(() => {
-    console.log('💥 Process terminated!');
+    console.log(' Process terminated!');
   });
 });

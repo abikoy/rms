@@ -239,7 +239,7 @@ router.post('/login', async (req, res) => {
     jwt.sign(
       payload,
       process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' },
+      { expiresIn: '7d' }, // Extended to 7 days
       (err, token) => {
         if (err) throw err;
         res.json({

@@ -29,6 +29,7 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import SortIcon from '@mui/icons-material/Sort';
+import DeleteIcon from '@mui/icons-material/Delete';
 import DashboardLayout from '../../components/DashboardLayout';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
@@ -38,6 +39,7 @@ const AssignedResourcesPage = () => {
   const [filteredAssignments, setFilteredAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [alertMessage, setAlertMessage] = useState('');
   const user = useSelector(state => state.auth.user);
   
   // Pagination states
@@ -52,6 +54,10 @@ const AssignedResourcesPage = () => {
   // Details dialog states
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // Delete dialog states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedForDelete, setSelectedForDelete] = useState(null);
 
   // Get unique departments for filter
   const departments = [...new Set(assignments.map(a => a.department))];
@@ -137,9 +143,41 @@ const AssignedResourcesPage = () => {
     setPage(0);
   };
 
-  const handleViewDetails = (assignment) => {
-    setSelectedAssignment(assignment);
-    setDetailsOpen(true);
+  const handleViewDetails = async (assignment) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `http://localhost:5003/api/asset-assignments/${assignment.id}`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.status === 'success') {
+        // Transform the response data to match the expected format
+        const transformedAssignment = {
+          ...assignment,
+          resourceName: response.data.data.resource.name,
+          serialNumber: response.data.data.resource.serialNumber,
+          type: response.data.data.resource.type,
+          expirationDate: response.data.data.resource.expirationDate,
+          status: response.data.data.status,
+          assignedAt: response.data.data.assignedAt,
+          requestId: response.data.data.requestId,
+          department: response.data.data.requisitionDivision,
+          items: response.data.data.items,
+          requestedBy: response.data.data.requestedBy.name,
+          assignedBy: {
+            name: response.data.data.assignedBy.name,
+            department: response.data.data.assignedBy.department || 'N/A'
+          }
+        };
+        setSelectedAssignment(transformedAssignment);
+        setDetailsOpen(true);
+      }
+    } catch (error) {
+      console.error('Error fetching assignment details:', error);
+    }
   };
 
   const handleCloseDetails = () => {
@@ -149,6 +187,41 @@ const AssignedResourcesPage = () => {
 
   const toggleSortOrder = () => {
     setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+  };
+
+  const handleDelete = async (assignment) => {
+    setSelectedForDelete(assignment);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.delete(
+        `http://localhost:5003/api/asset-assignments/${selectedForDelete.id}`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+
+      if (response.data.status === 'success') {
+        setAssignments(assignments.filter(a => a.id !== selectedForDelete.id));
+        setFilteredAssignments(filteredAssignments.filter(a => a.id !== selectedForDelete.id));
+        setAlertMessage(`Assignment for ${selectedForDelete.resourceName} has been successfully removed`);
+        
+        // Auto-hide alert after 5 seconds
+        setTimeout(() => setAlertMessage(''), 5000);
+      }
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+      setError(error.response?.data?.message || 'Failed to delete assignment');
+    } finally {
+      setLoading(false);
+      setDeleteDialogOpen(false);
+      setSelectedForDelete(null);
+    }
   };
 
   if (loading) {
@@ -181,6 +254,21 @@ const AssignedResourcesPage = () => {
   return (
     <DashboardLayout>
       <Box p={3}>
+        {alertMessage && (
+          <Alert 
+            severity="success" 
+            sx={{ 
+              mb: 2,
+              width: '100%',
+              position: 'sticky',
+              top: 0,
+              zIndex: 1000
+            }}
+            onClose={() => setAlertMessage('')}
+          >
+            {alertMessage}
+          </Alert>
+        )}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h4">
             Assigned Resources
@@ -263,12 +351,23 @@ const AssignedResourcesPage = () => {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <IconButton 
-                        onClick={() => handleViewDetails(assignment)}
-                        size="small"
-                      >
-                        <VisibilityIcon />
-                      </IconButton>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <IconButton 
+                          size="small"
+                          onClick={() => handleViewDetails(assignment)}
+                          title="View Details"
+                        >
+                          <VisibilityIcon />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDelete(assignment)}
+                          title="Delete Assignment"
+                          color="error"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -303,6 +402,31 @@ const AssignedResourcesPage = () => {
                   <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2}>
                     <Typography><strong>Name:</strong> {selectedAssignment.resourceName}</Typography>
                     <Typography><strong>Serial Number:</strong> {selectedAssignment.serialNumber}</Typography>
+                    <Typography><strong>Type:</strong> {selectedAssignment.type}</Typography>
+                    {selectedAssignment.type === 'non_fixed_assets' && (
+                      <Box gridColumn="1 / -1">
+                        <Typography><strong>Expiration Status:</strong></Typography>
+                        <Chip
+                          label={
+                            !selectedAssignment.expirationDate
+                              ? "No expiration date"
+                              : new Date(selectedAssignment.expirationDate) <= new Date()
+                                ? "Expired"
+                                : `Expires in ${Math.ceil((new Date(selectedAssignment.expirationDate) - new Date()) / (1000 * 60 * 60 * 24))} days`
+                          }
+                          color={
+                            !selectedAssignment.expirationDate
+                              ? "default"
+                              : new Date(selectedAssignment.expirationDate) <= new Date()
+                                ? "error"
+                                : new Date(selectedAssignment.expirationDate) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                                  ? "warning"
+                                  : "success"
+                          }
+                          sx={{ mt: 1 }}
+                        />
+                      </Box>
+                    )}
                   </Box>
 
                   <Typography variant="h6" mt={2}>Assignment Information</Typography>
@@ -363,6 +487,42 @@ const AssignedResourcesPage = () => {
               </DialogActions>
             </>
           )}
+        </Dialog>
+
+        {/* Delete Dialog */}
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+        >
+          <DialogTitle>Confirm Delete</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete this assignment?
+              {selectedForDelete && (
+                <Box mt={1}>
+                  <strong>Resource:</strong> {selectedForDelete.resourceName}<br />
+                  <strong>Department:</strong> {selectedForDelete.department}<br />
+                  <strong>Request ID:</strong> {selectedForDelete.requestId}
+                </Box>
+              )}
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button 
+              onClick={() => setDeleteDialogOpen(false)}
+              color="primary"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConfirmDelete}
+              color="error"
+              variant="contained"
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} /> : 'Delete'}
+            </Button>
+          </DialogActions>
         </Dialog>
       </Box>
     </DashboardLayout>

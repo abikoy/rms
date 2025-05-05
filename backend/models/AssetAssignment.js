@@ -30,6 +30,13 @@ const assetAssignmentSchema = new mongoose.Schema({
       type: Number,
       required: true
     },
+    expirationDate: {
+      type: Date,
+      required: function() {
+        // Required only if the associated resource is a non-fixed asset
+        return this.parent().resource?.type === 'non_fixed_assets';
+      }
+    },
     remark: String
   }],
   requestedBy: {

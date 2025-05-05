@@ -181,6 +181,46 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
+// Get a specific resource request by ID
+router.get('/:requestId', auth, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    
+    // Find the request and populate necessary fields
+    const request = await ResourceRequest.findOne({ requestNumber: requestId })
+      .populate('requestedBy', 'fullName department')
+      .populate('assignedTo.userId', 'fullName department role')
+      .populate('requestedItems.resource', 'name description quantity unitPrice')
+      .lean();
+    
+    // Log the request data for debugging
+    console.log('Found request:', JSON.stringify(request, null, 2));
+
+    if (!request) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Request not found',
+        details: {
+          notFound: true,
+          requestNumber: requestId
+        }
+      });
+    }
+
+    res.json({
+      status: 'success',
+      data: request
+    });
+  } catch (error) {
+    console.error('Error fetching request details:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch request details',
+      error: error.message
+    });
+  }
+});
+
 // Get resource requests with filtering
 router.get('/', auth, async (req, res) => {
   try {
@@ -430,6 +470,9 @@ router.get('/:requestNumber', auth, async (req, res) => {
 
 // Handle request approval/rejection
 router.patch('/:requestId/status', auth, async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { requestId } = req.params;
     const { action } = req.body; // 'approve' or 'reject'
@@ -483,23 +526,29 @@ router.patch('/:requestId/status', auth, async (req, res) => {
         if (newStatus === 'rejected') {
           updateData.status = 'rejected';
         } else if (newStatus === 'approved') {
-          updateData.status = 'approved';
+          // When school dean approves, set it for asset manager review
+          updateData.status = 'pending';
+          updateData.assetManagerStatus = 'pending';
         }
         break;
 
       case 'ddu_asset_manager':
       case 'iot_asset_manager':
-        // Asset managers can only update assetManagerStatus for dean-approved requests
-        if (request.schoolDeanStatus !== 'approved') {
-          return res.status(403).json({
-            success: false,
-            message: 'Can only manage requests approved by school dean'
-          });
-        }
+        // Asset managers should see requests that are:
+        // 1. Approved by school dean
+        // 2. Still pending for asset manager review
+        // 3. From their assigned schools
+        const filter = {};
+        filter['schoolDeanStatus'] = 'approved';
+        filter['assetManagerStatus'] = 'pending';
 
-        // Check if the asset manager has access to this school's requests
+        // DDU asset manager handles Business and Health schools
+        // IOT asset manager handles Computing school
         const userSchools = req.user.role === 'ddu_asset_manager' ?
           [SCHOOLS.BUSINESS, SCHOOLS.HEALTH] : [SCHOOLS.COMPUTING];
+        
+        // Add school filter
+        filter['school'] = { $in: userSchools };
 
         if (!userSchools.includes(request.school)) {
           return res.status(403).json({
@@ -633,22 +682,24 @@ router.patch('/:requestId/status', auth, async (req, res) => {
       await session.abortTransaction();
       throw error;
     } finally {
-      session.endSession();
+      await session.endSession();
     }
   } catch (error) {
     console.error('Error updating request status:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Error updating request status'
-    });
-    // Make sure to end the session on error
     if (session) {
       try {
         await session.abortTransaction();
-        session.endSession();
       } catch (sessionError) {
         console.error('Error cleaning up session:', sessionError);
       }
+    }
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update request status'
+    });
+  } finally {
+    if (session) {
+      await session.endSession();
     }
   }
 });

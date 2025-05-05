@@ -20,16 +20,22 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
-  Snackbar
+  Snackbar,
+  Card,
+  CardContent
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DashboardLayout from '../../components/DashboardLayout';
 import axios from 'axios';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 const AssignResourcePage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [resource, setResource] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +57,8 @@ const AssignResourcePage = () => {
         unitOfMeasure: 'piece',
         quantity: 1,
         unitPrice: 0,
-        remark: ''
+        remark: '',
+        expirationDate: null
       }
     ],
     requestedBy: {
@@ -147,35 +154,50 @@ const AssignResourcePage = () => {
       if (response.data.status === 'success') {
         const requestData = response.data.data;
         
-        // Check if the request is already assigned
-        if (requestData.status === 'assigned') {
-          setRequestError(`Request ${reqId} has already been assigned to another resource.`);
+        // Get the requested resource and quantity
+        const requestedResource = requestData.requestedItems?.[0]?.resource;
+        const requestedQuantity = requestData.requestedItems?.[0]?.quantityRequested || 1;
+        
+        // If we have a resource loaded, validate it matches the request
+        if (resource && requestedResource && resource._id !== requestedResource._id) {
+          console.log('Resource mismatch:', {
+            currentResource: resource._id,
+            requestedResource: requestedResource._id
+          });
+          setRequestError('This request is for a different resource. Please select the correct resource.');
           clearFormData();
           return;
         }
-
-        // Update form with request data
+        
+        // Log successful match
+        console.log('Resource match successful:', {
+          currentResource: resource?._id,
+          requestedResource: requestedResource?._id
+        });
+        
         setFormData(prev => ({
           ...prev,
-          requisitionDivision: requestData.division,
-          requestId: requestData.requestId,
+          requisitionDivision: requestData.department || '',
+          requestId: requestData.requestNumber || '',
+          items: [{
+            ...prev.items[0],
+            quantity: requestedQuantity, // Auto-fill the quantity from request
+            description: requestData.requestedItems?.[0]?.description || ''
+          }],
           requestedBy: {
             ...prev.requestedBy,
-            name: requestData.requestedBy.name,
-            department: requestData.requestedBy.department,
-            date: new Date().toISOString().split('T')[0]
+            name: requestData.requestedBy?.fullName || '',
+            department: requestData.department || ''
           },
           receivedBy: {
             ...prev.receivedBy,
-            name: requestData.requestedBy.name, // Same as requester
-            department: requestData.requestedBy.department,
-            date: new Date().toISOString().split('T')[0]
+            name: requestData.requestedAndReceivedBy?.name || '',
+            department: requestData.department || ''
           },
           certifiedBy: {
             ...prev.certifiedBy,
-            name: requestData.departmentHead.name,
-            department: requestData.departmentHead.department,
-            date: new Date().toISOString().split('T')[0]
+            name: requestData.certifiedBy?.name || '',
+            department: requestData.department || ''
           }
         }));
       }
@@ -200,6 +222,23 @@ const AssignResourcePage = () => {
     }
   };
 
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
+
+  const validateExpirationDate = (date) => {
+    if (!date) return false;
+    
+    const inputDate = new Date(date);
+    const tomorrow = new Date();
+    tomorrow.setHours(0, 0, 0, 0);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    return inputDate >= tomorrow;
+  };
+
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -208,7 +247,19 @@ const AssignResourcePage = () => {
   };
 
   const handleItemChange = (index, field, value) => {
-    // For quantity, ensure it's not more than available
+    const updatedItems = [...formData.items];
+    
+    if (field === 'expirationDate') {
+      // Clear any previous error
+      setError(null);
+      
+      // Validate the expiration date
+      if (!validateExpirationDate(value)) {
+        setError('Expiration date must be set to a future date (at least tomorrow)');
+        return;
+      }
+    }
+
     if (field === 'quantity') {
       const numValue = parseInt(value);
       if (numValue > availableQuantity) {
@@ -222,11 +273,14 @@ const AssignResourcePage = () => {
       setQuantityError('');
     }
 
-    setFormData(prev => ({
-      ...prev,
-      items: prev.items.map((item, i) => 
-        i === index ? { ...item, [field]: value } : item
-      )
+    updatedItems[index] = {
+      ...updatedItems[index],
+      [field]: value
+    };
+    
+    setFormData(prevState => ({
+      ...prevState,
+      items: updatedItems
     }));
   };
 
@@ -245,8 +299,6 @@ const AssignResourcePage = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
-      
       // Validate required fields
       if (!formData.requestId || !formData.requisitionDivision) {
         setError('Please fill in all required fields');
@@ -259,6 +311,12 @@ const AssignResourcePage = () => {
         return;
       }
 
+      // Validate expiration date for non-fixed assets
+      if (resource.type === 'non_fixed_assets' && !formData.items[0].expirationDate) {
+        setError('Expiration date is required for non-fixed assets');
+        return;
+      }
+
       // Validate quantity
       const requestedQuantity = formData.items[0].quantity;
       if (requestedQuantity > availableQuantity) {
@@ -266,44 +324,41 @@ const AssignResourcePage = () => {
         return;
       }
 
-      // Create the request body
-      const requestBody = {
-        resourceId: id,
-        requestId: formData.requestId,
-        requisitionDivision: formData.requisitionDivision,
-        items: formData.items.map(item => ({
+      // Filter out extra fields from items before sending
+      const filteredItems = formData.items.map(item => {
+        // Base fields that are always included
+        const baseItem = {
           description: item.description,
           unitOfMeasure: item.unitOfMeasure,
-          quantity: parseInt(item.quantity),
-          unitPrice: parseFloat(item.unitPrice),
-          remark: item.remark || ''
-        })),
-        requestedBy: {
-          name: formData.requestedBy.name,
-          department: formData.requestedBy.department,
-          date: formData.requestedBy.date
-        },
-        receivedBy: {
-          name: formData.receivedBy.name,
-          department: formData.receivedBy.department,
-          date: formData.receivedBy.date
-        },
-        certifiedBy: {
-          name: formData.certifiedBy.name,
-          department: formData.certifiedBy.department,
-          date: formData.certifiedBy.date
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          remark: item.remark
+        };
+
+        // Only add expirationDate for non-fixed assets
+        if (resource.type === 'non_fixed_assets') {
+          return { ...baseItem, expirationDate: item.expirationDate };
         }
-      };
 
-      setLoading(true);
+        // For fixed assets, don't include expirationDate at all
+        return baseItem;
+      });
 
+      const token = localStorage.getItem('token');
       const response = await axios.post(
         'http://localhost:5003/api/asset-assignments',
-        requestBody,
+        {
+          resourceId: id,
+          requestId: formData.requestId,
+          requisitionDivision: formData.requisitionDivision,
+          items: filteredItems,
+          requestedBy: formData.requestedBy,
+          receivedBy: formData.receivedBy,
+          certifiedBy: formData.certifiedBy
+        },
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Authorization': `Bearer ${token}`
           }
         }
       );
@@ -329,6 +384,218 @@ const AssignResourcePage = () => {
     }
   };
 
+  const renderMobileItemList = () => (
+    <Box sx={{ mt: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        Items
+      </Typography>
+      {formData.items.map((item, index) => (
+        <Card key={index} sx={{ mb: 2 }}>
+          <CardContent>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Description"
+                  value={item.description}
+                  onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                  InputProps={{ readOnly: true }}
+                  variant="filled"
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="Unit of Measure"
+                  value={item.unitOfMeasure}
+                  onChange={(e) => handleItemChange(index, 'unitOfMeasure', e.target.value)}
+                  InputProps={{ readOnly: true }}
+                  variant="filled"
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Quantity"
+                  value={item.quantity}
+                  onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
+                  error={!!quantityError}
+                  helperText={quantityError}
+                  InputProps={{
+                    inputProps: { min: 1, max: availableQuantity }
+                  }}
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Unit Price"
+                  value={item.unitPrice}
+                  onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value))}
+                  InputProps={{ readOnly: true }}
+                  variant="filled"
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="Total"
+                  value={(item.quantity * item.unitPrice).toFixed(2)}
+                  InputProps={{ readOnly: true }}
+                  variant="filled"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Remark"
+                  value={item.remark}
+                  onChange={(e) => handleItemChange(index, 'remark', e.target.value)}
+                  multiline
+                  rows={2}
+                />
+              </Grid>
+              {resource?.type === 'non_fixed_assets' && (
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    label="Expiration Date"
+                    value={item.expirationDate || ''}
+                    onChange={(e) => handleItemChange(index, 'expirationDate', e.target.value)}
+                    error={!!error && error.includes('expiration date')}
+                    helperText={
+                      error && error.includes('expiration date')
+                        ? error
+                        : `Minimum date: ${new Date(getTomorrowDate()).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}`
+                    }
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{
+                      min: getTomorrowDate()
+                    }}
+                    required
+                  />
+                </Grid>
+              )}
+            </Grid>
+          </CardContent>
+        </Card>
+      ))}
+    </Box>
+  );
+
+  const renderDesktopItemList = () => (
+    <TableContainer component={Paper} sx={{ mt: 3 }}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Description</TableCell>
+            <TableCell>Unit of Measure</TableCell>
+            <TableCell>Quantity</TableCell>
+            <TableCell>Unit Price</TableCell>
+            <TableCell>Total</TableCell>
+            <TableCell>Remark</TableCell>
+            {resource?.type === 'non_fixed_assets' && (
+              <TableCell>Expiration Date</TableCell>
+            )}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {formData.items.map((item, index) => (
+            <TableRow key={index}>
+              <TableCell>
+                <TextField
+                  fullWidth
+                  value={item.description}
+                  onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                  InputProps={{ readOnly: true }}
+                  variant="filled"
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  fullWidth
+                  value={item.unitOfMeasure}
+                  onChange={(e) => handleItemChange(index, 'unitOfMeasure', e.target.value)}
+                  InputProps={{ readOnly: true }}
+                  variant="filled"
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  type="number"
+                  value={item.quantity}
+                  onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
+                  error={!!quantityError}
+                  helperText={quantityError}
+                  InputProps={{
+                    inputProps: { min: 1, max: availableQuantity }
+                  }}
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  type="number"
+                  value={item.unitPrice}
+                  onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value))}
+                  InputProps={{ readOnly: true }}
+                  variant="filled"
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  value={(item.quantity * item.unitPrice).toFixed(2)}
+                  InputProps={{ readOnly: true }}
+                  variant="filled"
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  fullWidth
+                  value={item.remark}
+                  onChange={(e) => handleItemChange(index, 'remark', e.target.value)}
+                  multiline
+                  rows={2}
+                />
+              </TableCell>
+              {resource?.type === 'non_fixed_assets' && (
+                <TableCell>
+                  <TextField
+                    type="date"
+                    value={item.expirationDate || ''}
+                    onChange={(e) => handleItemChange(index, 'expirationDate', e.target.value)}
+                    error={!!error && error.includes('expiration date')}
+                    helperText={
+                      error && error.includes('expiration date') 
+                        ? error 
+                        : `Minimum date: ${new Date(getTomorrowDate()).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}`
+                    }
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{
+                      min: getTomorrowDate()
+                    }}
+                    fullWidth
+                    required
+                  />
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
   useEffect(() => {
     const fetchResource = async () => {
       try {
@@ -346,6 +613,12 @@ const AssignResourcePage = () => {
           const resourceData = response.data.data;
           setResource(resourceData);
           setAvailableQuantity(resourceData.quantity);
+          
+          // If we have a request ID, validate the resource matches
+          if (requestId) {
+            // Re-fetch request details to validate
+            await fetchRequestDetails(requestId);
+          }
 
           // Calculate total price in birr (including cents)
           const totalPrice = resourceData.unitPrice 
@@ -527,91 +800,7 @@ const AssignResourcePage = () => {
                   </Alert>
                 )}
                 
-                <TableContainer sx={{ 
-                  maxWidth: '100%',
-                  overflowX: 'auto',
-                  '& .MuiTableCell-root': {
-                    whiteSpace: 'nowrap',
-                    p: { xs: 1, sm: 2 }
-                  }
-                }}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Item No</TableCell>
-                        <TableCell>Description</TableCell>
-                        <TableCell>Unit</TableCell>
-                        <TableCell>Qty</TableCell>
-                        <TableCell>Price</TableCell>
-                        <TableCell>Remark</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {formData.items.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{index + 1}</TableCell>
-                          <TableCell>
-                            <TextField
-                              fullWidth
-                              value={item.description}
-                              variant="filled"
-                              InputProps={{ readOnly: true }}
-                              sx={{ minWidth: { xs: '100px', sm: '150px' } }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <FormControl fullWidth variant="standard">
-                              <Select
-                                value={item.unitOfMeasure}
-                                onChange={(e) => handleItemChange(index, 'unitOfMeasure', e.target.value)}
-                                sx={{ minWidth: { xs: '60px', sm: '80px' } }}
-                              >
-                                <MenuItem value="piece">Piece</MenuItem>
-                                <MenuItem value="set">Set</MenuItem>
-                                <MenuItem value="unit">Unit</MenuItem>
-                              </Select>
-                            </FormControl>
-                          </TableCell>
-                          <TableCell>
-                            <TextField
-                              type="number"
-                              value={item.quantity}
-                              onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
-                              variant="standard"
-                              inputProps={{ 
-                                min: 1,
-                                max: availableQuantity
-                              }}
-                              error={item.quantity > availableQuantity || item.quantity < 1}
-                              helperText={item.quantity > availableQuantity ? `Max: ${availableQuantity}` : item.quantity < 1 ? 'Min: 1' : ''}
-                              sx={{ width: { xs: '60px', sm: '80px' } }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <TextField
-                              type="number"
-                              value={Number(item.unitPrice || 0).toFixed(2)} 
-                              variant="filled"
-                              InputProps={{ 
-                                readOnly: true,
-                                startAdornment: <span style={{ marginRight: 8 }}>Br</span>
-                              }}
-                              sx={{ width: { xs: '80px', sm: '120px' } }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <TextField
-                              value={item.remark}
-                              onChange={(e) => handleItemChange(index, 'remark', e.target.value)}
-                              variant="standard"
-                              sx={{ minWidth: { xs: '100px', sm: '150px' } }}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                {isMobile ? renderMobileItemList() : renderDesktopItemList()}
               </Grid>
 
               <Grid item xs={12} container spacing={3}>

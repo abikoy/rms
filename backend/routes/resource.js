@@ -132,7 +132,12 @@ router.put('/:id', auth, isAssetManager, async (req, res) => {
     // Update the resource
     const updatedResource = await Resource.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, lastUpdated: new Date() },
+      { 
+        ...req.body,
+        // If quantity is 0, force status to assigned
+        status: req.body.quantity === 0 ? 'assigned' : req.body.status || 'available',
+        lastUpdated: new Date() 
+      },
       { new: true, runValidators: true }
     );
 

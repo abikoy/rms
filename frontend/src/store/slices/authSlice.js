@@ -16,6 +16,19 @@ axios.interceptors.request.use(
   }
 );
 
+// Add response interceptor to handle token expiration
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401 && error.response.data.message === 'Token expired') {
+      // Clear token and user data
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Configure axios defaults
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
