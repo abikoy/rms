@@ -39,7 +39,6 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import DashboardLayout from '../../components/DashboardLayout';
 import { fetchResources, deleteResource } from '../../store/slices/resourceSlice';
-import ResourceRequestForm from '../staff/ResourceRequestForm';
 import KeyboardArrowLeft from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRight from '@mui/icons-material/KeyboardArrowRight';
 
@@ -500,21 +499,23 @@ const Resources = () => {
 
       </Box>
 
-      <Dialog
-        open={showRequestForm}
-        onClose={() => setShowRequestForm(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogContent>
-          {selectedResource && (
-            <ResourceRequestForm
-              resource={selectedResource}
-              onClose={() => setShowRequestForm(false)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {showRequestForm && (
+        <Dialog
+          open={showRequestForm}
+          onClose={() => setShowRequestForm(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogContent>
+            {selectedResource && (
+              <ResourceRequestForm
+                resource={selectedResource}
+                onClose={() => setShowRequestForm(false)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </DashboardLayout>
   );
 };

@@ -50,6 +50,8 @@ const AvailableResources = () => {
   const { resources = [], loading, error } = useSelector(state => state.resources);
   const [searchQuery, setSearchQuery] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     // Check for success message in sessionStorage
@@ -59,8 +61,6 @@ const AvailableResources = () => {
       sessionStorage.removeItem('requestSuccess');
     }
   }, []);
-  const [filterType, setFilterType] = useState('all');
-  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -102,7 +102,7 @@ const AvailableResources = () => {
       };
       
       localStorage.setItem('selectedResource', JSON.stringify(resourceData));
-      navigate('/staff/request-resource');
+      navigate('/department-head/request-resource');
     } catch (error) {
       console.error('Error handling request:', error);
       setErrorMessage('Failed to process resource request');
@@ -110,15 +110,6 @@ const AvailableResources = () => {
   };
 
   const renderResourceCard = (resource) => {
-    // Debug logging
-    console.log('Resource data:', {
-      id: resource._id,
-      name: resource.name,
-      managerType: resource.managerType,
-      price: resource.price,
-      status: resource.status
-    });
-
     return (
       <Grid item xs={12} sm={6} md={4} key={resource._id}>
         <Card 
@@ -138,46 +129,50 @@ const AvailableResources = () => {
               {resource.name}
             </Typography>
             <Typography color="textSecondary" gutterBottom>
-              Type: {formatField(resource.type)}
+              Serial Number: {resource.serialNumber}
             </Typography>
-            <Typography color="textSecondary" gutterBottom>
-              Asset Class: {formatField(resource.assetClass)}
-            </Typography>
-            <Typography 
-              color="textSecondary" 
-              gutterBottom
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}
-            >
-              <strong>Manager Type:</strong> {resource.managerType ? (
-                <span style={{ color: resource.managerType === 'DDU Asset Manager' ? '#1976d2' : '#2e7d32' }}>
-                  {resource.managerType}
-                </span>
-              ) : 'N/A'}
-            </Typography>
-            <Typography color="textSecondary" gutterBottom>
-              Location: {resource.location || 'N/A'}
-            </Typography>
-            <Typography color="textSecondary" gutterBottom>
-              Price: {formatPrice({
-                birr: resource.price?.birr || resource.unitPrice?.birr,
-                cents: resource.price?.cents || resource.unitPrice?.cents
-              })}
-            </Typography>
-            <Typography color="textSecondary">
-              Status: {resource.status ? resource.status.charAt(0).toUpperCase() + resource.status.slice(1) : 'N/A'}
-            </Typography>
+              <Typography 
+                                  color="textSecondary" 
+                                  gutterBottom
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1
+                                  }}
+                                >
+                                  <strong>Manager Type:</strong> {resource.managerType ? (
+                                    <span style={{ color: resource.managerType === 'DDU Asset Manager' ? '#1976d2' : '#2e7d32' }}>
+                                      {resource.managerType}
+                                    </span>
+                                  ) : 'N/A'}
+                                </Typography>
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" component="div">
+                <strong>Type:</strong> {formatField(resource.type)}
+              </Typography>
+              <Typography variant="body2" component="div">
+                <strong>Asset Class:</strong> {formatField(resource.assetClass)}
+              </Typography>
+              <Typography variant="body2" component="div">
+                <strong>Location:</strong> {resource.location}
+              </Typography>
+                <Typography variant="body2">
+                        Price: {formatPrice({
+                              birr: resource.price?.birr || resource.unitPrice?.birr,
+                              cents: resource.price?.cents || resource.unitPrice?.cents
+                            })}
+                        </Typography>
+              <Typography variant="body2" component="div">
+                <strong>Quantity:</strong> {resource.quantity}
+              </Typography>
+            </Box>
           </CardContent>
-          <CardActions>
+          <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
             <Button
-              fullWidth
               variant="contained"
               color="primary"
               onClick={() => handleRequestResource(resource)}
-              disabled={!resource.status || resource.status !== 'available'}
+              disabled={resource.quantity <= 0}
             >
               Request Resource
             </Button>
@@ -186,18 +181,6 @@ const AvailableResources = () => {
       </Grid>
     );
   };
-
-  if (!user || !localStorage.getItem('token')) {
-    return (
-      <DashboardLayout>
-        <Container maxWidth="lg">
-          <Alert severity="error" sx={{ mt: 4 }}>
-            Please log in to view available resources
-          </Alert>
-        </Container>
-      </DashboardLayout>
-    );
-  }
 
   if (loading) {
     return (
@@ -210,10 +193,9 @@ const AvailableResources = () => {
   }
 
   // Filter for only unassigned and available resources
-  const availableResources = resources.filter(resource => 
-    !resource.assignedTo && 
-    resource.status === 'available'
-  );
+  const availableResources = resources.filter(resource => {
+    return !resource.assignedTo && resource.status === 'available';
+  });
 
   // Define available resource types
   const RESOURCE_TYPES = [
@@ -222,9 +204,15 @@ const AvailableResources = () => {
   ];
 
   const filteredResources = availableResources.filter(resource => {
-    const matchesSearch = resource.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         resource.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         resource.location.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = [
+      resource.name,
+      resource.type,
+      resource.location,
+      resource.managerType,
+      resource.serialNumber
+    ].some(field => 
+      field && field.toLowerCase().includes(searchQuery.toLowerCase())
+    );
     const matchesType = filterType === 'all' || resource.type === filterType;
     return matchesSearch && matchesType;
   });
@@ -248,7 +236,7 @@ const AvailableResources = () => {
             Available Resources
           </Typography>
           <Typography color="textSecondary">
-            Browse and request available unassigned resources
+            Browse and request available resources for your department
           </Typography>
         </Box>
 
@@ -305,7 +293,7 @@ const AvailableResources = () => {
             <Typography color="textSecondary" sx={{ maxWidth: 600 }}>
               {searchQuery || filterType !== 'all'
                 ? "No resources match your search criteria. Try adjusting your filters."
-                : "There are currently no unassigned resources available for request."}
+                : "There are currently no resources available for your department."}
             </Typography>
           </Paper>
         ) : (

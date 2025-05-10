@@ -79,13 +79,13 @@ const PendingRequests = () => {
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
-              <TableRow>
-                <TableCell>Request ID</TableCell>
-                <TableCell>Resource Requested</TableCell>
-                <TableCell>Requested By</TableCell>
-                <TableCell>Items</TableCell>
-                <TableCell>Department Head Status</TableCell>
-                <TableCell>Actions</TableCell>
+              <TableRow  sx={{ bgcolor: 'primary.main' }}>
+                <TableCell sx={{ color: 'common.white', fontWeight: 'bold' }}>Request ID</TableCell>
+                <TableCell sx={{ color: 'common.white', fontWeight: 'bold' }}>Resource Requested</TableCell>
+                <TableCell sx={{ color: 'common.white', fontWeight: 'bold' }}>Requested By</TableCell>
+                <TableCell sx={{ color: 'common.white', fontWeight: 'bold' }}>Date</TableCell>
+                <TableCell sx={{ color: 'common.white', fontWeight: 'bold' }}>Status</TableCell>
+                <TableCell sx={{ color: 'common.white', fontWeight: 'bold' }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -98,8 +98,22 @@ const PendingRequests = () => {
                   <TableCell>
                     {request.requestedBy || 'Unknown'}
                   </TableCell>
-                  <TableCell>{request.requestedItems?.length || 0} items</TableCell>
-                  <TableCell>{getStatusChip(request.departmentHeadStatus)}</TableCell>
+                 <TableCell>
+                {new Date(request.date || request.requestDate || request.createdAt).toLocaleDateString()}
+                     </TableCell>
+                    <TableCell>
+                                  <Chip
+                                    label={request.status}
+                                    color={
+                                      request.status === 'approved'
+                                        ? 'success'
+                                        : request.status === 'rejected'
+                                        ? 'error'
+                                        : 'warning'
+                                    }
+                                    size="small"
+                                  />
+                                </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <Button

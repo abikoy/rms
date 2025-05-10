@@ -107,36 +107,6 @@ const ResourceRequestForm = () => {
     e.preventDefault();
     
     try {
-      console.log('Current user data:', user);
-      
-      if (!user || !user.department) {
-        console.log('Missing department data:', user);
-        setError('Department information is missing');
-        return;
-      }
-
-      // Determine school based on department
-      let userSchool;
-      if (user.department.toLowerCase().includes('computer') || 
-          user.department.toLowerCase().includes('software') || 
-          user.department.toLowerCase().includes('it')) {
-        userSchool = 'School of Computing';
-      } else if (user.department.toLowerCase().includes('business') || 
-                 user.department.toLowerCase().includes('economics') || 
-                 user.department.toLowerCase().includes('accounting')) {
-        userSchool = 'School of Business and Economics';
-      } else if (user.department.toLowerCase().includes('health') || 
-                 user.department.toLowerCase().includes('nursing') || 
-                 user.department.toLowerCase().includes('medicine')) {
-        userSchool = 'School of Health Science';
-      }
-
-      if (!userSchool) {
-        console.log('Could not determine school from department:', user.department);
-        setError('Could not determine school from department');
-        return;
-      }
-
       if (items.some(item => !item.resource || !item.quantityRequested)) {
         setError('Please fill in all required fields for each item');
         return;
@@ -160,13 +130,10 @@ const ResourceRequestForm = () => {
           remarks: item.remarks?.trim() || ''
         })),
         department: user.department,
-        school: userSchool,  // Send the determined school
-        requestedBy: user.id,
-        role: 'staff'
+        school: user.department?.school,
+        requestedBy: user._id,
+        role: 'department_head'
       };
-
-      // Log the request data for debugging
-      console.log('Sending request data:', requestData);
 
       const response = await fetch(`${API_BASE_URL}/api/resource-requests`, {
         method: 'POST',
@@ -177,18 +144,18 @@ const ResourceRequestForm = () => {
         body: JSON.stringify(requestData)
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to submit request');
+        throw new Error(data.message || 'Failed to submit request');
       }
 
-      const result = await response.json();
       setSuccessMessage('Resource request submitted successfully');
-      setItems([{ itemNo: 1 }]);
-      
+      setTimeout(() => {
+        navigate('/department-head/available-resources');
+      }, 2000);
     } catch (error) {
-      console.error('Error submitting request:', error);
-      setError(error.message || 'Failed to submit request');
+      setError(error.message);
     }
   };
 
@@ -311,7 +278,7 @@ const ResourceRequestForm = () => {
         autoHideDuration={2000}
         onClose={() => {
           setSuccessMessage('');
-          navigate('/staff/available-resources');
+          navigate('/department-head/available-resources');
         }}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
@@ -323,7 +290,7 @@ const ResourceRequestForm = () => {
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
           <Typography variant="h6" gutterBottom>
-            Staff Resource Request Form
+            Department Head Resource Request Form
           </Typography>
 
           {error && (

@@ -17,31 +17,85 @@ const getAuthHeader = () => {
   };
 };
 
+// Helper to validate token
+const validateToken = () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  return token;
+};
+
 // Async thunks
 export const fetchResources = createAsyncThunk(
   'resources/fetchResources',
   async (_, { rejectWithValue }) => {
     try {
-      const config = getAuthHeader();
-      const response = await axios.get(`${API_URL}/resources`, config);
-      
-      if (response.data.status === 'success') {
-        return response.data;
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return rejectWithValue({
+          status: 'error',
+          message: 'Authentication required'
+        });
       }
-      
-      return rejectWithValue({
-        message: response.data.message || 'Failed to fetch resources'
+
+      // Log request attempt
+      console.log('Fetching resources...');
+
+      // Make request
+      const response = await axios.get(`${API_URL}/resources`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
+
+      // Log response
+      console.log('Server response:', {
+        status: response.status,
+        success: response.data?.status === 'success',
+        count: response.data?.data?.length || 0
+      });
+
+      // Validate response
+      if (!response.data?.status || !Array.isArray(response.data?.data)) {
+        throw new Error('Invalid server response');
+      }
+
+      return response.data;
     } catch (error) {
+      // Log error details
+      console.error('Request failed:', {
+        type: error.name,
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+
+      // Handle specific error cases
       if (error.message === 'No authentication token found') {
-        return rejectWithValue({ message: 'Please login to view resources' });
+        return rejectWithValue({
+          status: 'error',
+          message: 'Please login to view resources'
+        });
+      }
+
+      if (error.response?.status === 401) {
+        return rejectWithValue({
+          status: 'error',
+          message: 'Your session has expired. Please login again.'
+        });
       }
       
       if (error.response?.status === 403) {
-        return rejectWithValue({ message: 'You do not have permission to view resources' });
+        return rejectWithValue({
+          status: 'error',
+          message: error.response.data?.message || 'You do not have permission to view resources'
+        });
       }
 
+      // Handle all other errors
       return rejectWithValue({
+        status: 'error',
         message: error.response?.data?.message || 'Failed to fetch resources'
       });
     }

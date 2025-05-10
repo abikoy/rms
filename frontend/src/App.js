@@ -40,10 +40,12 @@ import IOTRequestHistory from './pages/asset-managers/iot/requests/RequestHistor
 import MyResources from './pages/staff/MyResources';
 import AvailableResources from './pages/staff/AvailableResources';
 import ResourceRequestForm from './pages/staff/ResourceRequestForm';
+import DepartmentHeadResourceRequestForm from './pages/department-head/ResourceRequestForm';
+import SchoolDeanResourceRequestForm from './pages/school-dean/ResourceRequestForm';
 import StaffSettings from './pages/staff/Settings';
 import DepartmentResources from './pages/department-head/DepartmentResources';
 import PendingRequests from './pages/department-head/PendingRequests';
-
+import DepartmentHeadAvailableResources from './pages/department-head/AvailableResources';
 // School Dean Pages
 import Requests from './pages/school-dean/Requests';
 import SchoolDeanPendingRequests from './pages/school-dean/PendingRequests';
@@ -83,6 +85,36 @@ const StaffRoute = ({ children }) => {
   }
 
   const allowedRoles = ['staff'];
+  if (!auth.user || !allowedRoles.includes(auth.user.role)) {
+    return <Navigate to="/dashboard" />;
+  }
+
+  return children;
+};
+
+const DepartmentHeadRoute = ({ children }) => {
+  const auth = useSelector((state) => state.auth);
+  
+  if (!auth.isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  const allowedRoles = ['department_head'];
+  if (!auth.user || !allowedRoles.includes(auth.user.role)) {
+    return <Navigate to="/dashboard" />;
+  }
+
+  return children;
+};
+
+const SchoolDeanRoute = ({ children }) => {
+  const auth = useSelector((state) => state.auth);
+  
+  if (!auth.isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  const allowedRoles = ['school_dean'];
   if (!auth.user || !allowedRoles.includes(auth.user.role)) {
     return <Navigate to="/dashboard" />;
   }
@@ -194,19 +226,22 @@ const AppContent = () => {
       <Route path="/staff/settings" element={<StaffRoute><StaffSettings /></StaffRoute>} />
 
       {/* Department Head Routes */}
-      <Route path="/department-head/dashboard" element={<ProtectedRoute><DepartmentHeadDashboard /></ProtectedRoute>} />
-      <Route path="/department-head/resources" element={<ProtectedRoute><DepartmentResources /></ProtectedRoute>} />
-      <Route path="/department-head/pending-requests" element={<ProtectedRoute><PendingRequests /></ProtectedRoute>} />
-      <Route path="/department-head/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/department-head/dashboard" element={<DepartmentHeadRoute><DepartmentHeadDashboard /></DepartmentHeadRoute>} />
+      <Route path="/department-head/available-resources" element={<DepartmentHeadRoute><DepartmentHeadAvailableResources /></DepartmentHeadRoute>} />
+      <Route path="/department-head/request-resource" element={<DepartmentHeadRoute><DepartmentHeadResourceRequestForm /></DepartmentHeadRoute>} />
+      <Route path="/department-head/resources" element={<DepartmentHeadRoute><DepartmentResources /></DepartmentHeadRoute>} />
+      <Route path="/department-head/pending-requests" element={<DepartmentHeadRoute><PendingRequests /></DepartmentHeadRoute>} />
+      <Route path="/department-head/settings" element={<DepartmentHeadRoute><Settings /></DepartmentHeadRoute>} />
 
       {/* School Dean Routes */}
-      <Route path="/school-dean/dashboard" element={<ProtectedRoute><SchoolDeanDashboard /></ProtectedRoute>} />
-      <Route path="/school-dean/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
-      <Route path="/school-dean/pending-requests" element={<ProtectedRoute><PendingRequests /></ProtectedRoute>} />
-      <Route path="/school-dean/request-history" element={<ProtectedRoute><RequestHistory /></ProtectedRoute>} />
-      <Route path="/school-dean/school-resources" element={<ProtectedRoute><SchoolResources /></ProtectedRoute>} />
-      <Route path="/school-dean/available-resources" element={<ProtectedRoute><AvailableResources /></ProtectedRoute>} />
-      <Route path="/school-dean/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/school-dean/dashboard" element={<SchoolDeanRoute><SchoolDeanDashboard /></SchoolDeanRoute>} />
+      <Route path="/school-dean/requests" element={<SchoolDeanRoute><Requests /></SchoolDeanRoute>} />
+      <Route path="/school-dean/pending-requests" element={<SchoolDeanRoute><SchoolDeanPendingRequests /></SchoolDeanRoute>} />
+      <Route path="/school-dean/request-history" element={<SchoolDeanRoute><RequestHistory /></SchoolDeanRoute>} />
+      <Route path="/school-dean/school-resources" element={<SchoolDeanRoute><SchoolResources /></SchoolDeanRoute>} />
+      <Route path="/school-dean/available-resources" element={<SchoolDeanRoute><SchoolDeanAvailableResources /></SchoolDeanRoute>} />
+      <Route path="/school-dean/request-resource" element={<SchoolDeanRoute><SchoolDeanResourceRequestForm /></SchoolDeanRoute>} />
+      <Route path="/school-dean/settings" element={<SchoolDeanRoute><Settings /></SchoolDeanRoute>} />
 
       {/* Transfer Resources */}
       <Route path="/resources/transfer" element={<ProtectedRoute><TransferResources /></ProtectedRoute>} />

@@ -68,24 +68,38 @@ const RequestHistory = ({ role, title }) => {
       {requests.map((request) => (
         <Grid item xs={12} key={request._id}>
           <Card>
-            <CardContent>
+          <CardContent>
               <Typography variant="h6" gutterBottom>
-                {request.resourceName}
+                Request ID: {request.idResource}
               </Typography>
               <Typography variant="body2" color="textSecondary" gutterBottom>
-                School: {request.school}
+                Resource Requested: {request.requestName}
               </Typography>
               <Typography variant="body2" color="textSecondary" gutterBottom>
-                Department: {request.department}
+                Requested By: {request.requestedBy || 'Unknown'}
               </Typography>
               <Typography variant="body2" color="textSecondary" gutterBottom>
-                Requested by: {request.requestedBy.name}
+                Date: {new Date(request.date).toLocaleDateString()}
               </Typography>
-              <Typography variant="body2" color="textSecondary" gutterBottom>
-                Date: {new Date(request.createdAt).toLocaleDateString()}
-              </Typography>
-              <Box mt={1}>
-                Status: {getStatusChip(request.status)}
+              <Box sx={{ mt: 1, mb: 2 }}>
+                <Chip
+                  label="Pending"
+                  color="warning"
+                  size="small"
+                  sx={{ fontWeight: 'medium' }}
+                />
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  onClick={() => handleViewRequest(request)}
+                  sx={{ minWidth: 'auto' }}
+                >
+                  View
+                </Button>
+              
               </Box>
             </CardContent>
           </Card>

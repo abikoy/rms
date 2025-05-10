@@ -11,13 +11,22 @@ const resourceRequestSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  role: {
+    type: String,
+    required: true,
+    enum: ['school_dean', 'department_head', 'staff']
+  },
   department: {
     type: String,
-    required: true
+    required: function() {
+      return this.role !== 'school_dean';
+    }
   },
   school: {
     type: String,
-    required: true
+    required: function() {
+      return this.role === 'school_dean';
+    }
   },
   requestedItems: [{
     resource: {
@@ -86,49 +95,49 @@ const resourceRequestSchema = new mongoose.Schema({
   requestedDivisionHead: {
     name: {
       type: String,
-      required: true
+      required: false
     },
     signature: String,
     date: {
       type: Date,
-      required: true
+      required: false
     }
   },
   requestedAndReceivedBy: {
     name: {
       type: String,
-      required: true
+      required: false
     },
     signature: String,
     date: {
       type: Date,
-      required: true
+      required: false
     }
   },
   certifiedBy: {
     name: {
       type: String,
-      required: true
+      required: false
     },
     signature: String,
     date: {
       type: Date,
-      required: true
+      required: false
     }
   },
   assignedTo: {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true
+      required: false
     },
     name: {
       type: String,
-      required: true
+      required: false
     },
     role: {
       type: String,
-      required: true
+      required: false
     }
   },
   approvedBy: {

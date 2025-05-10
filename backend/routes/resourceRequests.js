@@ -8,13 +8,151 @@ const ResourceRequest = require('../models/ResourceRequest');
 const { SCHOOLS, SCHOOL_DEPARTMENTS } = require('../constants/schools');
 const { sendNotification } = require('../socket/socketServer');
 
+// Constants for roles and request status
+const ROLES = {
+  SCHOOL_DEAN: 'school_dean',
+  DEPARTMENT_HEAD: 'department_head',
+  STAFF: 'staff',
+  IOT_ASSET_MANAGER: 'iot_asset_manager',
+  DDU_ASSET_MANAGER: 'ddu_asset_manager'
+};
+
+const REQUEST_STATUS = {
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected'
+};
+
+// Helper function to find asset manager based on school
+const findAssetManager = async (school) => {
+  const assetManagerRole = school === SCHOOLS.COMPUTING ? ROLES.IOT_ASSET_MANAGER : ROLES.DDU_ASSET_MANAGER;
+  const assetManager = await User.findOne({
+    role: assetManagerRole,
+    status: 'approved'
+  }).select('_id fullName role');
+
+  if (!assetManager) {
+    throw new Error(`No approved asset manager found for ${school}`);
+  }
+
+  return assetManager;
+};
+
+// Helper function to find department head
+const findDepartmentHead = async (department) => {
+  const departmentHead = await User.findOne({
+    department,
+    role: ROLES.DEPARTMENT_HEAD,
+    status: 'approved'
+  }).select('_id fullName role department');
+
+  if (!departmentHead) {
+    throw new Error(`No approved department head found for ${department}`);
+  }
+
+  return departmentHead;
+};
+
+// Helper function to find school dean
+const findSchoolDean = async (school) => {
+  const schoolDean = await User.findOne({
+    school,
+    role: ROLES.SCHOOL_DEAN,
+    status: 'approved'
+  }).select('_id fullName role school');
+
+  if (!schoolDean) {
+    throw new Error(`No approved school dean found for ${school}`);
+  }
+
+  return schoolDean;
+};
+
+// Helper function to get approval chain based on role
+const getApprovalChain = async (requestingUser, school) => {
+  const { role, department } = requestingUser;
+  const approvers = [];
+
+  try {
+    switch (role) {
+      case ROLES.STAFF:
+        // Staff -> Department Head -> School Dean -> Asset Manager
+        const departmentHead = await findDepartmentHead(department);
+        // Use the school provided in the request instead of department head's school
+        const staffSchoolDean = await findSchoolDean(school);
+        const staffAssetManager = await findAssetManager(school);
+        
+        approvers.push(
+          {
+            userId: departmentHead._id,
+            name: departmentHead.fullName,
+            role: departmentHead.role,
+            status: REQUEST_STATUS.PENDING
+          },
+          {
+            userId: staffSchoolDean._id,
+            name: staffSchoolDean.fullName,
+            role: staffSchoolDean.role,
+            status: REQUEST_STATUS.PENDING
+          },
+          {
+            userId: staffAssetManager._id,
+            name: staffAssetManager.fullName,
+            role: staffAssetManager.role,
+            status: REQUEST_STATUS.PENDING
+          }
+        );
+        break;
+
+      case ROLES.DEPARTMENT_HEAD:
+        // Department Head -> School Dean -> Asset Manager
+        const deptHeadSchoolDean = await findSchoolDean(school);
+        const deptHeadAssetManager = await findAssetManager(school);
+
+        approvers.push(
+          {
+            userId: deptHeadSchoolDean._id,
+            name: deptHeadSchoolDean.fullName,
+            role: deptHeadSchoolDean.role,
+            status: REQUEST_STATUS.PENDING
+          },
+          {
+            userId: deptHeadAssetManager._id,
+            name: deptHeadAssetManager.fullName,
+            role: deptHeadAssetManager.role,
+            status: REQUEST_STATUS.PENDING
+          }
+        );
+        break;
+
+      case ROLES.SCHOOL_DEAN:
+        // School Dean -> Asset Manager
+        const schoolDeanAssetManager = await findAssetManager(school);
+        approvers.push({
+          userId: schoolDeanAssetManager._id,
+          name: schoolDeanAssetManager.fullName,
+          role: schoolDeanAssetManager.role,
+          status: REQUEST_STATUS.PENDING
+        });
+        break;
+
+      default:
+        throw new Error('Invalid role for resource request');
+    }
+
+    return approvers;
+  } catch (error) {
+    throw new Error(`Failed to create approval chain: ${error.message}`);
+  }
+};
+
 // Create a new resource request
 router.post('/', auth, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
     console.log('Received request body:', req.body);
-    const { items } = req.body;
+    const { items, role, school } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
@@ -23,9 +161,19 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
-    // Get the requesting user's details with school information
+    // Validate role and required fields
+    if (role === ROLES.SCHOOL_DEAN && !school) {
+      return res.status(400).json({
+        success: false,
+        message: 'School is required for school dean requests'
+      });
+    }
+
+    // Get the requesting user's details
     console.log('Finding requesting user with ID:', req.user._id);
-    const requestingUser = await User.findById(req.user._id).populate('department').lean();
+    const requestingUser = await User.findById(req.user._id)
+      .select('_id fullName role status school department')
+      .lean();
     
     if (!requestingUser) {
       console.error('Requesting user not found:', req.user._id);
@@ -35,132 +183,133 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
-    console.log('Found requesting user:', {
-      id: requestingUser._id,
-      department: requestingUser.department,
-      role: requestingUser.role
-    });
-
-    // Find the department head
-    console.log('Finding department head for department:', requestingUser.department);
-    const departmentHead = await User.findOne({
-      department: requestingUser.department,
-      role: 'department_head',
-      status: 'approved'
-    }).select('_id fullName department role');
-
-    if (!departmentHead) {
-      console.error('No department head found for department:', requestingUser.department);
+    // Validate user role
+    if (requestingUser.role !== role) {
       return res.status(400).json({
         success: false,
-        message: `No approved department head found for ${requestingUser.department}. Please contact system administrator.`
+        message: 'Role mismatch'
       });
     }
 
-    console.log('Found department head:', {
-      id: departmentHead._id,
-      department: departmentHead.department,
-      role: departmentHead.role
+    console.log('Processing request for:', {
+      id: requestingUser._id,
+      role: requestingUser.role,
+      school: requestingUser.school
     });
 
-    const currentDate = new Date();
-    
-    // Generate a unique request number
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    
-    // Get the latest request number for today
+    // Get approval chain based on user's role
+    let approvers;
+    try {
+      approvers = await getApprovalChain(requestingUser, role === ROLES.STAFF ? school : requestingUser.school);
+    } catch (error) {
+      console.error('Error getting approval chain:', error);
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    // Log the approvers for debugging
+    console.log('Approval chain:', approvers);
+
+    const today = new Date();
+    const year = today.getFullYear().toString().slice(-2);
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+
+    // Get the latest sequence number for today
     const latestRequest = await ResourceRequest.findOne({
-      requestNumber: new RegExp(`^RR-${year}${month}${day}-`)
+      requestNumber: new RegExp(`^RR-${year}${month}${day}`)
     }).sort({ requestNumber: -1 });
-    
+
     let sequenceNumber = 1;
     if (latestRequest) {
-      const lastSequence = parseInt(latestRequest.requestNumber.split('-')[2]);
-      sequenceNumber = lastSequence + 1;
+      const currentSequence = parseInt(latestRequest.requestNumber.split('-')[2]);
+      sequenceNumber = currentSequence + 1;
     }
-    
+
     const requestNumber = `RR-${year}${month}${day}-${String(sequenceNumber).padStart(3, '0')}`;
     
     // Create the resource request
     const resourceRequest = new ResourceRequest({
       requestNumber,
       requestedBy: req.user._id,
-      department: requestingUser.department,
-      school: requestingUser.school,
+      role: role,
+      ...(role === ROLES.SCHOOL_DEAN ? { 
+        school,
+        schoolDeanStatus: 'approved',  // Auto-approve for school dean
+        assetManagerStatus: 'pending'  // Set pending for asset manager review
+      } : role === ROLES.DEPARTMENT_HEAD ? {
+        department: requestingUser.department,
+        school: requestingUser.school,  // Add school from department head's profile
+        departmentHeadStatus: 'approved',  // Auto-approve for department head
+        schoolDeanStatus: 'pending',
+        assetManagerStatus: 'pending'
+      } : { 
+        department: requestingUser.department,
+        school: requestingUser.school,  // Add school from user's profile
+        departmentHeadStatus: 'pending',
+        schoolDeanStatus: 'pending',
+        assetManagerStatus: 'pending'
+      }),
       requestedItems: items.map(item => ({
         resource: item.resource,
         itemNo: item.itemNo,
         description: item.description,
         unitOfMeasure: item.unitOfMeasure,
-        quantityRequested: parseInt(item.quantityRequested) || 1,
-        unitPrice: {
-          birr: parseInt(item.price?.birr) || 0,
-          cents: parseInt(item.price?.cents) || 0
-        },
-        totalAmount: {
-          birr: parseInt(item.totalAmount?.birr) || 0,
-          cents: parseInt(item.totalAmount?.cents) || 0
-        },
-        remark: item.remarks || ''
+        quantityRequested: item.quantityRequested,
+        unitPrice: item.unitPrice,
+        totalAmount: item.totalAmount,
+        remarks: item.remarks
       })),
-      status: 'pending',
+      status: REQUEST_STATUS.PENDING,
+      approvers: approvers,
       requestedDivisionHead: {
-        name: departmentHead.fullName || '',
-        date: currentDate,
-        signature: ''
+        name: requestingUser.fullName,
+        date: new Date()
       },
       requestedAndReceivedBy: {
-        name: requestingUser.fullName || '',
-        date: currentDate,
-        signature: ''
+        name: requestingUser.fullName,
+        date: new Date()
       },
       certifiedBy: {
-        name: departmentHead.fullName || '',
-        date: currentDate,
-        signature: ''
-      },
-      assignedTo: {
-        userId: departmentHead._id,
-        name: departmentHead.fullName || '',
-        role: 'department_head'
+        name: requestingUser.fullName,
+        date: new Date()
       }
     });
 
-    await resourceRequest.save({ session });
+    // Save the request
+    await resourceRequest.save();
 
-    // Create notification for department head
-    const notification = new Notification({
-      recipient: departmentHead._id,
-      type: 'resource_request',
-      title: 'New Resource Request',
-      message: `New resource request ${requestNumber} from ${requestingUser.fullName}`,
-      relatedRequest: resourceRequest._id,
-      department: requestingUser.department
-    });
+    // Create notification for the first approver if exists
+    if (approvers && approvers.length > 0) {
+      const firstApprover = approvers[0];
+      
+      // For school dean requests, notify asset manager directly
+      const recipientId = role === ROLES.SCHOOL_DEAN ? 
+        firstApprover.userId : // Asset manager ID
+        firstApprover.userId;  // Department head or other approver ID
 
-    await notification.save({ session });
+      await Notification.create({
+        recipient: recipientId,
+        title: 'New Resource Request',
+        message: `New resource request ${requestNumber} requires your approval`,
+        type: 'resource_request',
+        resourceRequestId: resourceRequest._id
+      });
 
-    // Send real-time notification
-    await sendNotification({
-      ...notification.toObject(),
-      recipient: departmentHead._id,
-      department: requestingUser.department
-    });
+      // Send real-time notification if socket exists
+      sendNotification(recipientId, {
+        title: 'New Resource Request',
+        message: `New resource request ${requestNumber} requires your approval`
+      });
+    }
 
     await session.commitTransaction();
-
-    // Populate necessary fields for response
-    const populatedRequest = await ResourceRequest.findById(resourceRequest._id)
-      .populate('requestedBy', 'fullName department')
-      .populate('assignedTo.userId', 'fullName department role');
-
-    res.status(201).json({
+    res.json({
       success: true,
       message: 'Resource request created successfully',
-      data: populatedRequest
+      requestNumber
     });
   
   } catch (error) {
@@ -189,7 +338,7 @@ router.get('/:requestId', auth, async (req, res) => {
     // Find the request and populate necessary fields
     const request = await ResourceRequest.findOne({ requestNumber: requestId })
       .populate('requestedBy', 'fullName department')
-      .populate('assignedTo.userId', 'fullName department role')
+      .populate('approvers.userId', 'fullName department role')
       .populate('requestedItems.resource', 'name description quantity unitPrice')
       .lean();
     
@@ -370,7 +519,7 @@ router.get('/', auth, async (req, res) => {
 router.get('/my-requests', auth, async (req, res) => {
   try {
     const requests = await ResourceRequest.find({
-      'requestedBy.userId': req.user._id
+      'requestedBy': req.user._id
     }).sort({ requestDate: -1 });
 
     res.json({
@@ -398,7 +547,7 @@ router.get('/assigned-requests', auth, async (req, res) => {
     }
 
     const requests = await ResourceRequest.find({
-      'assignedTo.userId': req.user._id
+      'approvers.userId': req.user._id
     }).sort({ requestDate: -1 });
 
     res.json({
@@ -529,6 +678,7 @@ router.patch('/:requestId/status', auth, async (req, res) => {
           // When school dean approves, set it for asset manager review
           updateData.status = 'pending';
           updateData.assetManagerStatus = 'pending';
+          updateData.school = req.user.school;  // Set the school from the dean's profile
         }
         break;
 

@@ -75,8 +75,8 @@ const resourceSchema = new mongoose.Schema({
   managerType: {
     type: String,
     required: true,
-    enum: ['DDU Asset Manager', 'IoT Asset Manager'],
-    default: 'DDU Asset Manager'
+    enum: ['ddu_asset_manager', 'iot_asset_manager'],
+    default: 'ddu_asset_manager'
   },
   price: {
     birr: {

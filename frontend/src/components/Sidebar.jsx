@@ -103,6 +103,12 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
             section: 'main'
           },
           {
+            text: 'Available Resources',
+            icon: <ResourcesIcon />,
+            path: '/department-head/available-resources',
+            section: 'main'
+          },
+          {
             text: 'Department Resources',
             icon: <ResourcesIcon />,
             path: '/department-head/resources',

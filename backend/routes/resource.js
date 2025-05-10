@@ -72,14 +72,71 @@ router.get('/', auth, async (req, res) => {
       resources = await Resource.find({
         managerType: userRole
       });
-    } else if (userRole === 'staff') {
+    } else if (userRole === 'school_dean') {
+      let managerType;
+      
+      // Determine manager type based on school using switch
+      const { SCHOOLS } = require('../constants/schools');
+      switch (req.user.school) {
+        case SCHOOLS.COMPUTING:
+          managerType = 'iot_asset_manager';
+          break;
+        case SCHOOLS.BUSINESS:
+        case SCHOOLS.HEALTH:
+          managerType = 'ddu_asset_manager';
+          break;
+        default:
+          console.log('Invalid school:', req.user.school);
+          return res.status(403).json({
+            status: 'fail',
+            message: `Invalid school for resource access: ${req.user.school}`
+          });
+      }
+
+      // Fetch resources based on determined manager type
+      resources = await Resource.find({ managerType });
+      console.log(`School dean (${req.user.school}) resources for ${managerType}:`, resources);
+    }
+    
+    else if (userRole === 'department_head') {
+      // Department head should see resources based on their school's manager type
+      let managerType;
+      
+      // Determine manager type based on school using switch
+      const { SCHOOLS } = require('../constants/schools');
+      switch (req.user.school) {
+        case SCHOOLS.COMPUTING:
+          managerType = 'iot_asset_manager';
+          break;
+        case SCHOOLS.BUSINESS:
+        case SCHOOLS.HEALTH:
+          managerType = 'ddu_asset_manager';
+          break;
+        default:
+          console.log('Invalid school:', req.user.school);
+          return res.status(403).json({
+            status: 'fail',
+            message: `Invalid school for resource access: ${req.user.school}`
+          });
+      }
+
+      // Fetch resources based on determined manager type
+      resources = await Resource.find({ managerType });
+      console.log(`Department head (${req.user.school}) resources for ${managerType}:`, resources);
+    }
+    
+    
+    
+    else if (userRole === 'staff') {
       // Staff can only see resources with status 'available'
       resources = await Resource.find({
         status: 'available'
       });
-      
       console.log('Available resources:', resources);
-    } else {
+    }
+    
+    
+    else {
       return res.status(403).json({
         status: 'fail',
         message: 'Unauthorized access'
