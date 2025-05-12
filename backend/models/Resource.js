@@ -137,6 +137,13 @@ const resourceSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  // Assignment Information
+  assignedSchool: {
+    type: String
+  },
+  assignedDepartment: {
+    type: String
+  },
   // Signatures
   storeKeeper: {
     name: String,

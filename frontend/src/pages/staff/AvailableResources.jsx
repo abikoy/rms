@@ -110,15 +110,6 @@ const AvailableResources = () => {
   };
 
   const renderResourceCard = (resource) => {
-    // Debug logging
-    console.log('Resource data:', {
-      id: resource._id,
-      name: resource.name,
-      managerType: resource.managerType,
-      price: resource.price,
-      status: resource.status
-    });
-
     return (
       <Grid item xs={12} sm={6} md={4} key={resource._id}>
         <Card 
@@ -137,47 +128,42 @@ const AvailableResources = () => {
             <Typography variant="h6" gutterBottom>
               {resource.name}
             </Typography>
-            <Typography color="textSecondary" gutterBottom>
-              Type: {formatField(resource.type)}
-            </Typography>
-            <Typography color="textSecondary" gutterBottom>
-              Asset Class: {formatField(resource.assetClass)}
-            </Typography>
-            <Typography 
-              color="textSecondary" 
-              gutterBottom
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}
-            >
-              <strong>Manager Type:</strong> {resource.managerType ? (
-                <span style={{ color: resource.managerType === 'DDU Asset Manager' ? '#1976d2' : '#2e7d32' }}>
-                  {resource.managerType}
-                </span>
-              ) : 'N/A'}
-            </Typography>
-            <Typography color="textSecondary" gutterBottom>
-              Location: {resource.location || 'N/A'}
-            </Typography>
-            <Typography color="textSecondary" gutterBottom>
-              Price: {formatPrice({
-                birr: resource.price?.birr || resource.unitPrice?.birr,
-                cents: resource.price?.cents || resource.unitPrice?.cents
-              })}
-            </Typography>
-            <Typography color="textSecondary">
-              Status: {resource.status ? resource.status.charAt(0).toUpperCase() + resource.status.slice(1) : 'N/A'}
-            </Typography>
+            
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                <strong>Type:</strong> {formatField(resource.type)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                <strong>Unit Price:</strong> {formatPrice(resource.unitPrice)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                <strong>Status:</strong> {formatField(resource.status)}
+              </Typography>
+              {resource.assignedSchool && (
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <strong>Assigned School:</strong> {resource.assignedSchool}
+                </Typography>
+              )}
+              {resource.assignedDepartment && (
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <strong>Assigned Department:</strong> {resource.assignedDepartment}
+                </Typography>
+              )}
+            </Box>
+
+            {resource.description && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                {resource.description}
+              </Typography>
+            )}
           </CardContent>
-          <CardActions>
+
+          <CardActions sx={{ p: 2, pt: 0 }}>
             <Button
-              fullWidth
               variant="contained"
               color="primary"
+              fullWidth
               onClick={() => handleRequestResource(resource)}
-              disabled={!resource.status || resource.status !== 'available'}
             >
               Request Resource
             </Button>
@@ -228,6 +214,41 @@ const AvailableResources = () => {
     const matchesType = filterType === 'all' || resource.type === filterType;
     return matchesSearch && matchesType;
   });
+
+  if (filteredResources.length === 0) {
+    return (
+      <DashboardLayout>
+        <Container maxWidth="lg">
+          <Box sx={{ p: 3 }}>
+            <Typography variant="h4" gutterBottom>
+              Available Resources
+            </Typography>
+            <Paper
+              sx={{
+                p: 6,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+              }}
+            >
+              <NoResourcesIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 3 }} />
+              <Typography variant="h5" gutterBottom>
+                No Available Resources
+              </Typography>
+              <Typography color="textSecondary" sx={{ maxWidth: 600 }}>
+                {searchQuery || filterType !== 'all'
+                  ? "No resources match your search criteria. Try adjusting your filters."
+                  : "There are currently no resources assigned to your school/department available for request."}
+              </Typography>
+            </Paper>
+          </Box>
+        </Container>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -286,33 +307,9 @@ const AvailableResources = () => {
 
         <Divider sx={{ mb: 4 }} />
 
-        {filteredResources.length === 0 ? (
-          <Paper
-            sx={{
-              p: 6,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              textAlign: 'center',
-              bgcolor: 'background.paper',
-              borderRadius: 2,
-            }}
-          >
-            <NoResourcesIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 3 }} />
-            <Typography variant="h5" gutterBottom>
-              No Available Resources
-            </Typography>
-            <Typography color="textSecondary" sx={{ maxWidth: 600 }}>
-              {searchQuery || filterType !== 'all'
-                ? "No resources match your search criteria. Try adjusting your filters."
-                : "There are currently no unassigned resources available for request."}
-            </Typography>
-          </Paper>
-        ) : (
-          <Grid container spacing={3}>
-            {filteredResources.map(resource => renderResourceCard(resource))}
-          </Grid>
-        )}
+        <Grid container spacing={3}>
+          {filteredResources.map(resource => renderResourceCard(resource))}
+        </Grid>
       </Container>
     </DashboardLayout>
   );

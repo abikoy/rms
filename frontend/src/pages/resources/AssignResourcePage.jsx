@@ -102,10 +102,10 @@ const AssignResourcePage = () => {
   };
 
   const validateRequestId = (value) => {
-    const requestIdPattern = /^RR-\d{8}-\d{3}$/;
+    const requestIdPattern = /^RR-\d{4}\d{2}\d{2}-\d{3}$/;
     if (!value) return '';
     if (!requestIdPattern.test(value)) {
-      return 'Invalid Request ID format. Please use format: RR-YYYYMMDD-XXX (e.g., RR-20250501-001)';
+      return 'Invalid Request ID format. Please use format: RR-YYYYMMDD-XXX (e.g., RR-20250511-001)';
     }
     return '';
   };
@@ -123,7 +123,16 @@ const AssignResourcePage = () => {
     }
 
     if (value.trim()) {
-      await fetchRequestDetails(value);
+      try {
+        await fetchRequestDetails(value);
+      } catch (error) {
+        console.error('Error fetching request details:', error);
+        setRequestError(
+          error.response?.data?.message || 
+          'Error fetching request details. Please try again.'
+        );
+        clearFormData();
+      }
     } else {
       setRequestError('');
       clearFormData();
@@ -169,35 +178,33 @@ const AssignResourcePage = () => {
           return;
         }
         
-        // Log successful match
-        console.log('Resource match successful:', {
-          currentResource: resource?._id,
-          requestedResource: requestedResource?._id
-        });
+        // For School Dean requests, use their school as the department
+        const isSchoolDean = requestData.role === 'school_dean';
+        const departmentValue = isSchoolDean ? requestData.school : (requestData.department || '');
         
         setFormData(prev => ({
           ...prev,
-          requisitionDivision: requestData.department || '',
+          requisitionDivision: departmentValue,
           requestId: requestData.requestNumber || '',
           items: [{
             ...prev.items[0],
-            quantity: requestedQuantity, // Auto-fill the quantity from request
+            quantity: requestedQuantity,
             description: requestData.requestedItems?.[0]?.description || ''
           }],
           requestedBy: {
             ...prev.requestedBy,
             name: requestData.requestedBy?.fullName || '',
-            department: requestData.department || ''
+            department: departmentValue
           },
           receivedBy: {
             ...prev.receivedBy,
             name: requestData.requestedAndReceivedBy?.name || '',
-            department: requestData.department || ''
+            department: departmentValue
           },
           certifiedBy: {
             ...prev.certifiedBy,
             name: requestData.certifiedBy?.name || '',
-            department: requestData.department || ''
+            department: departmentValue
           }
         }));
       }
@@ -300,8 +307,13 @@ const AssignResourcePage = () => {
 
     try {
       // Validate required fields
-      if (!formData.requestId || !formData.requisitionDivision) {
-        setError('Please fill in all required fields');
+      if (!formData.requestId) {
+        setError('Request ID is required');
+        return;
+      }
+
+      if (!formData.requisitionDivision) {
+        setError('Requisition Division is required');
         return;
       }
 
@@ -770,8 +782,10 @@ const AssignResourcePage = () => {
                   fullWidth
                   label="Requisition Division"
                   value={formData.requisitionDivision}
-                  InputProps={{ readOnly: true }}
-                  variant="filled"
+                  onChange={(e) => handleInputChange('requisitionDivision', e.target.value)}
+                  required
+                  placeholder="Enter or modify requisition division"
+                  helperText="You can modify this field after auto-fill"
                 />
               </Grid>
 

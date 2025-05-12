@@ -4,7 +4,7 @@ const auth = require('../middleware/auth');
 const Resource = require('../models/Resource');
 const AssetAssignment = require('../models/AssetAssignment');
 const mongoose = require('mongoose');
-const User = require('../models/User'); // Added User model
+const User = require('../models/User');
 
 // Create a new asset assignment
 router.post('/', auth, async (req, res) => {
@@ -78,9 +78,16 @@ router.post('/', auth, async (req, res) => {
         // Save the assignment
         await assignment.save({ session });
 
-        // Update resource status and quantity
-        resource.status = 'assigned';
+        // Update resource quantity
         resource.quantity -= totalRequestedQuantity;
+        
+        // Only update status to 'assigned' if no quantity remains
+        if (resource.quantity === 0) {
+            resource.status = 'assigned';
+        } else {
+            resource.status = 'available'; // Keep as available if there's remaining quantity
+        }
+        
         await resource.save({ session });
 
         // Commit transaction
@@ -88,7 +95,10 @@ router.post('/', auth, async (req, res) => {
 
         // Fetch the complete assignment with populated fields
         const populatedAssignment = await AssetAssignment.findById(assignment._id)
-            .populate('resource', 'name serialNumber status type expirationDate')
+            .populate({
+                path: 'resource',
+                select: 'name serialNumber status type expirationDate'
+            })
             .populate('assignedBy', 'fullName email role department');
 
         res.status(201).json({
@@ -185,15 +195,121 @@ router.get('/', auth, async (req, res) => {
     }
 });
 
+// Get school resources
+router.get('/school-resources', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user || user.role !== 'school_dean') {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Access denied. School Dean access required.'
+            });
+        }
+
+        const assignments = await AssetAssignment.find({
+            requisitionDivision: user.school,
+            status: 'assigned'
+        })
+        .populate({
+            path: 'resource',
+            select: 'name type quantity status description serialNumber unitPrice'
+        })
+        .populate('assignedBy', 'fullName')
+        .sort({ assignedAt: -1 });
+
+        res.json({
+            status: 'success',
+            data: assignments
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+});
+
+// Get department resources
+router.get('/department-resources', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user || user.role !== 'department_head') {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Access denied. Department Head access required.'
+            });
+        }
+
+        const assignments = await AssetAssignment.find({
+            $or: [
+                { "requestedBy.department": user.department },
+                { "receivedBy.department": user.department },
+                { "certifiedBy.department": user.department }
+            ],
+            status: 'assigned'
+        })
+        .populate({
+            path: 'resource',
+            select: 'name type quantity status description serialNumber unitPrice'
+        })
+        .populate('assignedBy', 'fullName')
+        .sort({ assignedAt: -1 });
+
+        res.json({
+            status: 'success',
+            data: assignments
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+});
+
+// Get staff's personal resources
+router.get('/staff-resources', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Access denied.'
+            });
+        }
+
+        const assignments = await AssetAssignment.find({
+            "receivedBy.name": user.fullName,
+            status: 'assigned'
+        })
+        .populate({
+            path: 'resource',
+            select: 'name type quantity status description serialNumber unitPrice'
+        })
+        .populate('assignedBy', 'fullName')
+        .sort({ assignedAt: -1 });
+
+        res.json({
+            status: 'success',
+            data: assignments
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+});
+
 // Get a single asset assignment
 router.get('/:id', auth, async (req, res) => {
     try {
         const assignment = await AssetAssignment.findById(req.params.id)
             .populate({
                 path: 'resource',
-                select: 'name serialNumber status school type expirationDate'
+                select: 'name serialNumber status type expirationDate'
             })
-            .populate('assignedBy', 'name email');
+            .populate('assignedBy', 'fullName email role department');
 
         if (!assignment) {
             return res.status(404).json({

@@ -96,10 +96,7 @@ router.get('/', auth, async (req, res) => {
       // Fetch resources based on determined manager type
       resources = await Resource.find({ managerType });
       console.log(`School dean (${req.user.school}) resources for ${managerType}:`, resources);
-    }
-    
-    else if (userRole === 'department_head') {
-      // Department head should see resources based on their school's manager type
+    } else if (userRole === 'department_head') {
       let managerType;
       
       // Determine manager type based on school using switch
@@ -123,18 +120,54 @@ router.get('/', auth, async (req, res) => {
       // Fetch resources based on determined manager type
       resources = await Resource.find({ managerType });
       console.log(`Department head (${req.user.school}) resources for ${managerType}:`, resources);
-    }
-    
-    
-    
-    else if (userRole === 'staff') {
-      // Staff can only see resources with status 'available'
+    } else if (userRole === 'staff') {
+      // Staff can only see resources assigned to their school dean or department head
+      let managerType;
+      const { SCHOOLS } = require('../constants/schools');
+      
+      // Determine manager type based on staff's school
+      switch (req.user.school) {
+        case SCHOOLS.COMPUTING:
+          managerType = 'iot_asset_manager';
+          break;
+        case SCHOOLS.BUSINESS:
+        case SCHOOLS.HEALTH:
+          managerType = 'ddu_asset_manager';
+          break;
+        default:
+          return res.status(403).json({
+            status: 'fail',
+            message: `Invalid school for resource access: ${req.user.school}`
+          });
+      }
+
+      // Find resources that are:
+      // 1. Managed by their school's asset manager
+      // 2. Available (not yet assigned to specific staff)
+      // 3. Assigned to either their school dean or department head
       resources = await Resource.find({
-        status: 'available'
+        $and: [
+          { managerType: managerType },
+          { status: 'available' },
+          {
+            $or: [
+              // Resources assigned to their school dean
+              {
+                'assignedTo.role': 'school_dean',
+                'assignedTo.school': req.user.school
+              },
+              // Resources assigned to their department head
+              {
+                'assignedTo.role': 'department_head',
+                'assignedTo.department': req.user.department
+              }
+            ]
+          }
+        ]
       });
-      console.log('Available resources:', resources);
+      
+      console.log(`Staff (${req.user.school}, ${req.user.department}) available resources:`, resources);
     }
-    
     
     else {
       return res.status(403).json({

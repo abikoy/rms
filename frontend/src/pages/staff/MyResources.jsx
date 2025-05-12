@@ -1,59 +1,92 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Container,
   Typography,
   Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Button,
   CircularProgress,
-  Paper,
-  Divider,
-  Chip,
+  Alert,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Pagination,
+  InputAdornment,
+  Container,
+  Paper
 } from '@mui/material';
-import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { fetchResources } from '../../store/slices/resourceSlice';
+import { Search as SearchIcon } from '@mui/icons-material';
 import DashboardLayout from '../../components/DashboardLayout';
-import { 
-  InventoryOutlined as InventoryIcon,
-  AddCircleOutline as RequestIcon,
-  LocationOn as LocationIcon,
-  Category as CategoryIcon,
-} from '@mui/icons-material';
+import ResourceCard from '../../components/ResourceCard';
+import axios from 'axios';
 
 const MyResources = () => {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const { user } = useSelector(state => state.auth);
-  const { resources = [], loading } = useSelector(state => state.resources || {});
-  const [isLoading, setIsLoading] = useState(true);
+  const [resources, setResources] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [itemsPerPage] = useState(6);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        await dispatch(fetchResources());
-      } catch (error) {
-        console.error('Error loading resources:', error);
-      } finally {
-        setIsLoading(false);
+    fetchResources();
+  }, []);
+
+  const fetchResources = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:5003/api/asset-assignments/staff-resources', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.status === 'success') {
+        setResources(response.data.data);
       }
-    };
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to fetch resources');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    loadData();
-  }, [dispatch]);
+  const handleReturn = (resource) => {
+    // TODO: Implement return functionality
+    console.log('Return resource:', resource);
+  };
 
-  // Filter resources to only show those assigned to the current user
-  const assignedResources = resources.filter(resource => 
-    resource.assignedTo === user?._id && resource.status === 'assigned'
+  const handleTransfer = (resource) => {
+    // TODO: Implement transfer functionality
+    console.log('Transfer resource:', resource);
+  };
+
+  // Filter and search functions
+  const filteredResources = resources.filter(resource => {
+    const matchesSearch = searchQuery === '' || 
+      resource.resource?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      resource.resource?.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesType = typeFilter === 'all' || 
+      resource.resource?.type === (typeFilter === 'fixed' ? 'fixed_assets' : 'non_fixed_assets');
+    
+    return matchesSearch && matchesType;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredResources.length / itemsPerPage);
+  const currentPageResources = filteredResources.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
   );
 
-  if (isLoading) {
+  if (loading) {
     return (
       <DashboardLayout>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
           <CircularProgress />
         </Box>
       </DashboardLayout>
@@ -62,134 +95,85 @@ const MyResources = () => {
 
   return (
     <DashboardLayout>
-      <Container maxWidth="lg">
-        {/* Header Section with Request Button */}
-        <Box sx={{ mb: 4 }}>
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            mb: 2,
-            gap: 2,
-          }}>
-            <Box>
-              <Typography variant="h4" gutterBottom>
-                My Resources
-              </Typography>
-              <Typography color="textSecondary">
-                View and manage your assigned resources
-              </Typography>
-            </Box>
-            <Button
-              variant="contained"
-              color="primary"
-              size="large"
-              startIcon={<RequestIcon />}
-              onClick={() => navigate('/staff/request-resource')}
-              sx={{ 
-                minWidth: 200,
-                height: 48,
-                fontWeight: 600,
-                boxShadow: 2,
-              }}
-            >
-              Request a Resource
-            </Button>
-          </Box>
-        </Box>
+      <Container maxWidth="xl">
+        <Box sx={{ p: 3 }}>
+          <Typography variant="h4" sx={{ mb: 3 }}>My Resources</Typography>
 
-        <Divider sx={{ mb: 4 }} />
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          )}
 
-        {/* Resources Display Section */}
-        {assignedResources.length === 0 ? (
-          <Paper
-            sx={{
-              p: 6,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              textAlign: 'center',
-              bgcolor: 'background.paper',
-              borderRadius: 2,
-              boxShadow: 1,
-            }}
-          >
-            <InventoryIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 3 }} />
-            <Typography variant="h5" gutterBottom>
-              No Resources Assigned
-            </Typography>
-            <Typography color="textSecondary" sx={{ mb: 3, maxWidth: 600 }}>
-              You currently have no resources assigned to you. To request resources, please use the button above.
-            </Typography>
-          </Paper>
-        ) : (
-          <Grid container spacing={3}>
-            {assignedResources.map((resource) => (
-              <Grid item xs={12} sm={6} md={4} key={resource._id}>
-                <Card
-                  sx={{
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    bgcolor: 'background.paper',
-                    '&:hover': {
-                      boxShadow: 6,
-                    },
-                    position: 'relative',
+          {/* Search and Filter Section */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Search resources..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                    ),
                   }}
-                >
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6" gutterBottom>
-                      {resource.name}
-                    </Typography>
-                    <Box sx={{ mb: 3 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <CategoryIcon sx={{ fontSize: 20, mr: 1, color: 'text.secondary' }} />
-                        <Typography color="textSecondary">
-                          Type: {resource.type === 'non_fixed_assets' ? 'Non-Fixed Asset' : 'Fixed Asset'}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <LocationIcon sx={{ fontSize: 20, mr: 1, color: 'text.secondary' }} />
-                        <Typography color="textSecondary">
-                          Location: {resource.location}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <Chip 
-                      label={resource.managerType === 'ddu_asset_manager' ? 'DDU Asset' : 'IoT Asset'}
-                      size="small"
-                      sx={{ 
-                        position: 'absolute',
-                        top: 16,
-                        right: 16,
-                        bgcolor: resource.managerType === 'ddu_asset_manager' ? 'info.light' : 'success.light',
-                      }}
-                    />
-                  </CardContent>
-                  <CardActions sx={{ p: 2, pt: 0, justifyContent: 'flex-start', gap: 1 }}>
-                    <Button 
-                      size="small" 
-                      variant="outlined" 
-                      color="primary"
-                      onClick={() => {/* Add view details handler */}}
-                    >
-                      View Details
-                    </Button>
-                    <Button 
-                      size="small" 
-                      variant="outlined" 
-                      color="secondary"
-                      onClick={() => {/* Add transfer request handler */}}
-                    >
-                      Request Transfer
-                    </Button>
-                  </CardActions>
-                </Card>
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth variant="outlined">
+                  <InputLabel>Filter by Type</InputLabel>
+                  <Select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    label="Filter by Type"
+                  >
+                    <MenuItem value="all">All Types</MenuItem>
+                    <MenuItem value="fixed">Fixed Assets</MenuItem>
+                    <MenuItem value="non-fixed">Non-Fixed Assets</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Paper>
+
+          {/* Resources Grid */}
+          <Grid container spacing={3}>
+            {currentPageResources.map((resource) => (
+              <Grid item xs={12} sm={6} lg={4} key={resource._id}>
+                <ResourceCard
+                  resource={resource}
+                  onReturn={handleReturn}
+                  onTransfer={handleTransfer}
+                />
               </Grid>
             ))}
           </Grid>
-        )}
+
+          {/* Empty State */}
+          {filteredResources.length === 0 && !error && (
+            <Alert severity="info" sx={{ mt: 3 }}>
+              No resources found matching your criteria.
+            </Alert>
+          )}
+
+          {/* Pagination */}
+          {filteredResources.length > 0 && (
+            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={(e, value) => setPage(value)}
+                color="primary"
+                size="large"
+              />
+            </Box>
+          )}
+        </Box>
       </Container>
     </DashboardLayout>
   );

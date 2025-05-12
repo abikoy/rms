@@ -213,7 +213,7 @@ router.post('/', auth, async (req, res) => {
     console.log('Approval chain:', approvers);
 
     const today = new Date();
-    const year = today.getFullYear().toString().slice(-2);
+    const year = today.getFullYear().toString();  // Use full year instead of last 2 digits
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
 
@@ -338,7 +338,6 @@ router.get('/:requestId', auth, async (req, res) => {
     // Find the request and populate necessary fields
     const request = await ResourceRequest.findOne({ requestNumber: requestId })
       .populate('requestedBy', 'fullName department')
-      .populate('approvers.userId', 'fullName department role')
       .populate('requestedItems.resource', 'name description quantity unitPrice')
       .lean();
     
@@ -568,7 +567,9 @@ router.get('/:requestNumber', auth, async (req, res) => {
   try {
     const request = await ResourceRequest.findOne({ 
       requestNumber: req.params.requestNumber 
-    }).populate('requestedBy', 'fullName department');
+    })
+    .populate('requestedBy', 'fullName department')
+    .populate('requestedItems.resource', 'name description quantity unitPrice');
 
     if (!request) {
       return res.status(404).json({
@@ -581,30 +582,21 @@ router.get('/:requestNumber', auth, async (req, res) => {
       });
     }
 
-    // Get department head for the requester's department
+    // Get department head for the requester's department if exists
     const departmentHead = await User.findOne({
       department: request.department,
-      role: 'department_head',
-      status: 'approved'
-    }).select('fullName department');
+      role: 'department_head'
+    });
 
+    // Format the response
     res.json({
       status: 'success',
       data: {
-        requestId: request.requestNumber,
-        requestedBy: {
-          name: request.requestedBy.fullName,
-          department: request.department
-        },
+        ...request.toObject(),
         departmentHead: departmentHead ? {
           name: departmentHead.fullName,
           department: departmentHead.department
-        } : {
-          name: 'Not Assigned',
-          department: 'N/A'
-        },
-        division: request.department,
-        status: request.status
+        } : null
       }
     });
   } catch (error) {
