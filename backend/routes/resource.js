@@ -119,9 +119,9 @@ router.get('/', auth, async (req, res) => {
 
       // Fetch resources based on determined manager type
       resources = await Resource.find({ managerType });
-      console.log(`Department head (${req.user.school}) resources for ${managerType}:`, resources);
-    } else if (userRole === 'staff') {
-      // Staff can only see resources assigned to their school dean or department head
+      console.log(`Department head (${req.user.school}) resources for ${managerType}:`, resources);}
+     else if (userRole === 'staff') {
+      // Staff can only see resources assigned to their school/department
       let managerType;
       const { SCHOOLS } = require('../constants/schools');
       
@@ -144,23 +144,15 @@ router.get('/', auth, async (req, res) => {
       // Find resources that are:
       // 1. Managed by their school's asset manager
       // 2. Available (not yet assigned to specific staff)
-      // 3. Assigned to either their school dean or department head
+      // 3. Already assigned to their school/department
       resources = await Resource.find({
         $and: [
           { managerType: managerType },
           { status: 'available' },
           {
             $or: [
-              // Resources assigned to their school dean
-              {
-                'assignedTo.role': 'school_dean',
-                'assignedTo.school': req.user.school
-              },
-              // Resources assigned to their department head
-              {
-                'assignedTo.role': 'department_head',
-                'assignedTo.department': req.user.department
-              }
+              { 'assignedSchool': req.user.school },
+              { 'assignedDepartment': req.user.department }
             ]
           }
         ]

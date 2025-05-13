@@ -21,7 +21,6 @@ import {
 } from '@mui/material';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { fetchResources } from '../../store/slices/resourceSlice';
 import DashboardLayout from '../../components/DashboardLayout';
 import {
   SearchOffOutlined as NoResourcesIcon,
@@ -47,9 +46,12 @@ const AvailableResources = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector(state => state.auth);
-  const { resources = [], loading, error } = useSelector(state => state.resources);
+  const [resources, setResources] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     // Check for success message in sessionStorage
@@ -59,46 +61,58 @@ const AvailableResources = () => {
       sessionStorage.removeItem('requestSuccess');
     }
   }, []);
-  const [filterType, setFilterType] = useState('all');
-  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
+      setLoading(true);
       try {
         if (!user || !localStorage.getItem('token')) {
           setErrorMessage('Please log in to view available resources');
           return;
         }
 
-        const result = await dispatch(fetchResources()).unwrap();
-        if (result.status !== 'success') {
-          setErrorMessage('Failed to load resources');
-          return;
+        // Get token from localStorage
+        const token = localStorage.getItem('token');
+        console.log('Using token:', token ? 'Present' : 'Missing');
+
+        const response = await fetch('http://localhost:5003/api/asset-assignments/staff-available-resources', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Server error:', errorData);
+          throw new Error(errorData.message || 'Failed to fetch resources');
         }
-        
-        // Debug: Log the first resource to check its structure
-        if (result.data && result.data.length > 0) {
-          console.log('First resource from API:', result.data[0]);
+
+        const data = await response.json();
+        if (data.status === 'success') {
+          setResources(data.data);
+        } else {
+          setErrorMessage(data.message || 'Failed to load resources');
         }
       } catch (error) {
         console.error('Error loading resources:', error);
         setErrorMessage(error.message || 'Failed to load resources');
+      } finally {
+        setLoading(false);
       }
     };
     loadData();
-  }, [dispatch, user]);
+  }, [user]);
 
   const handleRequestResource = (resource) => {
     try {
       const resourceData = {
-        description: resource.name,
-        unitOfMeasure: resource.unitOfMeasure || 'pcs',
-        price: {
-          birr: resource.price?.birr || resource.unitPrice?.birr || 0,
-          cents: resource.price?.cents || resource.unitPrice?.cents || 0
-        },
-        resourceId: resource._id,
-        managerType: resource.managerType
+        ...resource.resource,
+        source: resource.source,
+        assignedBy: resource.assignedBy,
+        requestType: resource.source.type // 'school' or 'department'
       };
       
       localStorage.setItem('selectedResource', JSON.stringify(resourceData));
@@ -126,34 +140,33 @@ const AvailableResources = () => {
         >
           <CardContent sx={{ flexGrow: 1 }}>
             <Typography variant="h6" gutterBottom>
-              {resource.name}
+              {resource.resource.name}
             </Typography>
             
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                <strong>Type:</strong> {formatField(resource.type)}
+                <strong>Type:</strong> {formatField(resource.resource.type)}
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                <strong>Unit Price:</strong> {formatPrice(resource.unitPrice)}
+                <strong>Unit Price:</strong> {formatPrice(resource.resource.unitPrice)}
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                <strong>Status:</strong> {formatField(resource.status)}
+                <strong>Status:</strong> {formatField(resource.resource.status)}
               </Typography>
-              {resource.assignedSchool && (
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  <strong>Assigned School:</strong> {resource.assignedSchool}
-                </Typography>
-              )}
-              {resource.assignedDepartment && (
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  <strong>Assigned Department:</strong> {resource.assignedDepartment}
-                </Typography>
-              )}
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                <strong>Source:</strong> {resource.source.type === 'school' ? 'School' : 'Department'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                <strong>{resource.source.type === 'school' ? 'School' : 'Department'}:</strong> {resource.source.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                <strong>Assigned To:</strong> {resource.source.assignedTo}
+              </Typography>
             </Box>
 
-            {resource.description && (
+            {resource.resource.description && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                {resource.description}
+                {resource.resource.description}
               </Typography>
             )}
           </CardContent>
@@ -195,10 +208,9 @@ const AvailableResources = () => {
     );
   }
 
-  // Filter for only unassigned and available resources
+  // Filter for only available resources
   const availableResources = resources.filter(resource => 
-    !resource.assignedTo && 
-    resource.status === 'available'
+    resource && resource.resource && resource.resource.status === 'available'
   );
 
   // Define available resource types
@@ -208,10 +220,15 @@ const AvailableResources = () => {
   ];
 
   const filteredResources = availableResources.filter(resource => {
-    const matchesSearch = resource.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         resource.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         resource.location.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === 'all' || resource.type === filterType;
+    if (!resource || !resource.resource || !resource.source) return false;
+    
+    const matchesSearch = searchQuery === '' || (
+      resource.resource.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      resource.resource.type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      resource.source.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    const matchesType = filterType === 'all' || resource.resource.type === filterType;
     return matchesSearch && matchesType;
   });
 

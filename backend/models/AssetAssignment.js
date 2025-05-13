@@ -91,6 +91,10 @@ const assetAssignmentSchema = new mongoose.Schema({
     enum: ['pending', 'approved', 'rejected', 'assigned'],
     default: 'assigned'
   },
+  isAvailable: {
+    type: Boolean,
+    default: false
+  },
   assignedAt: {
     type: Date,
     default: Date.now

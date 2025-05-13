@@ -24,6 +24,7 @@ const DepartmentResources = () => {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,9 +60,31 @@ const DepartmentResources = () => {
     console.log('Return resource:', resource);
   };
 
-  const handleTransfer = (resource) => {
-    // TODO: Implement transfer functionality
-    console.log('Transfer resource:', resource);
+  const handleToggleStatus = async (assignmentId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        `http://localhost:5003/api/asset-assignments/${assignmentId}/toggle-status`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.status === 'success') {
+        setSuccessMessage(response.data.message);
+        // Refresh the resources list
+        fetchResources();
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccessMessage(null), 3000);
+      }
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to toggle resource status');
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const handleTransfer = (resourceId) => {
+    // Handle transfer logic
+    console.log('Transfer resource:', resourceId);
   };
 
   // Group identical resources and combine their quantities
@@ -135,8 +158,13 @@ const DepartmentResources = () => {
           </Typography>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <Alert severity="error" sx={{ mb: 2 }}>
               {error}
+            </Alert>
+          )}
+          {successMessage && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {successMessage}
             </Alert>
           )}
 
@@ -188,9 +216,12 @@ const DepartmentResources = () => {
             {currentPageResources.map((resource) => (
               <Grid item xs={12} sm={6} md={4} key={resource.resource.serialNumber}>
                 <ResourceCard
+                  key={resource._id}
                   resource={resource}
-                  onReturn={handleReturn}
-                  onTransfer={handleTransfer}
+                  onReturn={() => handleReturn(resource._id)}
+                  onTransfer={() => handleTransfer(resource._id)}
+                  onToggleStatus={handleToggleStatus}
+                  userRole="department_head"
                 />
               </Grid>
             ))}

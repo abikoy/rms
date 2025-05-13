@@ -19,7 +19,7 @@ import {
     Category as TypeIcon
 } from '@mui/icons-material';
 
-const ResourceCard = ({ resource, onReturn, onTransfer }) => {
+const ResourceCard = ({ resource, onReturn, onTransfer, onToggleStatus, userRole }) => {
     const resourceDetails = resource.resource || {};
     
     const {
@@ -51,8 +51,9 @@ const ResourceCard = ({ resource, onReturn, onTransfer }) => {
         return `${birr}.${cents.toString().padStart(2, '0')} Birr`;
     })();
 
-    // Always show as Assigned since these are assigned resources
-    const statusColor = 'success';
+    // Determine status color and clickability
+    const statusColor = resource.isAvailable ? 'info' : 'success';
+    const canToggleStatus = ['school_dean', 'department_head'].includes(userRole);
 
     return (
         <Card 
@@ -84,12 +85,21 @@ const ResourceCard = ({ resource, onReturn, onTransfer }) => {
                     >
                         {name || 'Unnamed Resource'}
                     </Typography>
-                    <Chip 
-                        label="Assigned"
-                        color={statusColor}
-                        size="small"
-                        sx={{ borderRadius: 1 }}
-                    />
+                    <Tooltip title={canToggleStatus ? 'Click to toggle availability' : ''}>
+                        <Chip 
+                            label={resource.isAvailable ? 'Available' : 'Assigned'}
+                            color={statusColor}
+                            size="small"
+                            sx={{ 
+                                borderRadius: 1,
+                                cursor: canToggleStatus ? 'pointer' : 'default',
+                                '&:hover': canToggleStatus ? {
+                                    opacity: 0.8
+                                } : {}
+                            }}
+                            onClick={canToggleStatus ? () => onToggleStatus(resource._id) : undefined}
+                        />
+                    </Tooltip>
                 </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>

@@ -6,6 +6,152 @@ const AssetAssignment = require('../models/AssetAssignment');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 
+// Get resources available to staff (from school dean and department head)
+router.get('/staff-available-resources', auth, async (req, res) => {
+    try {
+        console.log('Processing staff available resources request...');
+        console.log('User from auth:', req.user);
+
+        // Use the user info from auth middleware
+        const staff = req.user;
+
+        if (staff.role !== 'staff') {
+            console.log('Invalid role:', staff.role);
+            return res.status(403).json({
+                status: 'error',
+                message: 'Access denied. Staff access only.'
+            });
+        }
+
+        console.log('Looking for superiors with criteria:', {
+            schoolDean: { role: 'school_dean', school: staff.school },
+            departmentHead: { role: 'department_head', department: staff.department }
+        });
+
+        // Find school dean and department head
+        const [schoolDean, departmentHead] = await Promise.all([
+            User.findOne({
+                role: 'school_dean',
+                school: staff.school,
+                status: 'approved'
+            }).select('_id fullName').lean(),
+            User.findOne({
+                role: 'department_head',
+                department: staff.department,
+                status: 'approved'
+            }).select('_id fullName').lean()
+        ]);
+
+        console.log('Found superiors:', {
+            schoolDean: schoolDean ? {
+                _id: schoolDean._id,
+                fullName: schoolDean.fullName,
+                school: schoolDean.school,
+                department: schoolDean.department
+            } : 'Not found',
+            departmentHead: departmentHead ? {
+                _id: departmentHead._id,
+                fullName: departmentHead.fullName,
+                school: departmentHead.school,
+                department: departmentHead.department
+            } : 'Not found'
+        });
+
+        console.log('Querying resources with criteria:', {
+            schoolDean: schoolDean ? {
+                id: schoolDean._id,
+                name: schoolDean.fullName
+            } : 'Not found',
+            departmentHead: departmentHead ? {
+                id: departmentHead._id,
+                name: departmentHead.fullName
+            } : 'Not found'
+        });
+
+        // Get assigned resources that are marked as available
+        const [schoolResources, deptResources] = await Promise.all([
+            schoolDean ? AssetAssignment.find({
+                $or: [
+                    { "requestedBy.department": staff.school },
+                    { "receivedBy.department": staff.school },
+                    { "certifiedBy.department": staff.school }
+                ],
+                status: 'assigned',
+                isAvailable: true // Only get resources marked as available
+            })
+            .populate('resource')
+            .populate('assignedBy')
+            .lean() : [],
+            departmentHead ? AssetAssignment.find({
+                $or: [
+                    { "requestedBy.department": staff.department },
+                    { "receivedBy.department": staff.department },
+                    { "certifiedBy.department": staff.department }
+                ],
+                status: 'assigned',
+                isAvailable: true // Only get resources marked as available
+            })
+            .populate('resource')
+            .populate('assignedBy')
+            .lean() : []
+        ]);
+
+        // Filter out any assignments where the resource doesn't exist
+        const validSchoolResources = schoolResources.filter(assignment => assignment.resource);
+        const validDeptResources = deptResources.filter(assignment => assignment.resource);
+
+        console.log('Department resources found:', {
+            total: deptResources.length,
+            valid: validDeptResources.length,
+            resources: validDeptResources.map(r => ({
+                id: r.resource._id,
+                name: r.resource.name,
+                status: r.status
+            }))
+        });
+        console.log('School resources found:', {
+            total: schoolResources.length,
+            valid: validSchoolResources.length,
+            resources: validSchoolResources.map(r => ({
+                id: r.resource._id,
+                name: r.resource.name,
+                status: r.status
+            }))
+        });
+
+        // Add source information
+        const resources = [
+            ...schoolResources.map(assignment => ({
+                ...assignment,
+                source: {
+                    type: 'school',
+                    name: staff.school,
+                    assignedTo: schoolDean?.fullName || 'School Dean'
+                }
+            })),
+            ...deptResources.map(assignment => ({
+                ...assignment,
+                source: {
+                    type: 'department',
+                    name: staff.department,
+                    assignedTo: departmentHead?.fullName || 'Department Head'
+                }
+            }))
+        ];
+
+        res.json({
+            status: 'success',
+            data: resources
+        });
+    } catch (error) {
+        console.error('Error fetching staff available resources:', error);
+        res.status(500).json({
+            status: 'error',
+            message: error.message || 'Failed to fetch available resources'
+        });
+    }
+});
+
 // Create a new asset assignment
 router.post('/', auth, async (req, res) => {
     const session = await mongoose.startSession();
@@ -301,6 +447,122 @@ router.get('/staff-resources', auth, async (req, res) => {
     }
 });
 
+// Get resources available to staff (from school dean and department head)
+router.get('/staff-available-resources', auth, async (req, res) => {
+    try {
+        console.log('Processing staff available resources request...');
+        console.log('User from token:', req.user);
+
+        // Get the staff member's details
+        const staff = await User.findById(req.user.id)
+            .select('school department role status')
+            .lean();
+
+        console.log('Found staff details:', staff);
+
+        if (!staff) {
+            console.log('Staff not found for ID:', req.user.id);
+            return res.status(404).json({
+                status: 'error',
+                message: 'Staff member not found'
+            });
+        }
+
+        if (staff.role !== 'staff') {
+            console.log('Invalid role:', staff.role);
+            return res.status(403).json({
+                status: 'error',
+                message: 'Access denied. Staff access only.'
+            });
+        }
+
+        // Find school dean and department head
+        const [schoolDean, departmentHead] = await Promise.all([
+            User.findOne({
+                role: 'school_dean',
+                school: staff.school,
+                status: 'approved'
+            }).select('_id fullName').lean(),
+            User.findOne({
+                role: 'department_head',
+                department: staff.department,
+                status: 'approved'
+            }).select('_id fullName').lean()
+        ]);
+
+        console.log('Found superiors:', {
+            schoolDean: schoolDean ? schoolDean._id : 'Not found',
+            departmentHead: departmentHead ? departmentHead._id : 'Not found'
+        });
+
+        // Get assigned resources
+        const [schoolResources, deptResources] = await Promise.all([
+            schoolDean ? AssetAssignment.find({
+                receivedBy: schoolDean._id,
+                status: 'assigned'
+            })
+            .populate('resource')
+            .populate('assignedBy', 'fullName')
+            .lean() : [],
+            departmentHead ? AssetAssignment.find({
+                receivedBy: departmentHead._id,
+                status: 'assigned'
+            })
+            .populate('resource')
+            .populate('assignedBy', 'fullName')
+            .lean() : []
+        ]);
+
+        console.log(`Staff (${staff.school}, ${staff.department}) available resources:`, {
+            schoolResources: schoolResources.length,
+            deptResources: deptResources.length
+        });
+
+        // Add source information
+        const resources = [
+            ...validSchoolResources.map(assignment => ({
+                ...assignment,
+                source: {
+                    type: 'school',
+                    name: staff.school,
+                    assignedTo: schoolDean?.fullName || 'School Dean'
+                }
+            })),
+            ...validDeptResources.map(assignment => ({
+                ...assignment,
+                source: {
+                    type: 'department',
+                    name: staff.department,
+                    assignedTo: departmentHead?.fullName || 'Department Head'
+                }
+            }))
+        ];
+
+        console.log('Found', resources.length, 'valid resources for staff');
+
+        res.json({
+            status: 'success',
+            data: resources,
+            debug: {
+                schoolResources: {
+                    total: schoolResources.length,
+                    valid: validSchoolResources.length
+                },
+                deptResources: {
+                    total: deptResources.length,
+                    valid: validDeptResources.length
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching staff available resources:', error);
+        res.status(500).json({
+            status: 'error',
+            message: error.message || 'Failed to fetch available resources'
+        });
+    }
+});
+
 // Get a single asset assignment
 router.get('/:id', auth, async (req, res) => {
     try {
@@ -387,6 +649,61 @@ router.delete('/:id', auth, async (req, res) => {
         });
     } finally {
         session.endSession();
+    }
+});
+
+// Toggle assignment status between 'assigned' and 'available'
+router.put('/:id/toggle-status', auth, async (req, res) => {
+    try {
+        const assignment = await AssetAssignment.findById(req.params.id);
+        if (!assignment) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Assignment not found'
+            });
+        }
+
+        // Check if user is authorized (must be school dean or department head)
+        if (req.user.role !== 'school_dean' && req.user.role !== 'department_head') {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Only school dean or department head can toggle resource status'
+            });
+        }
+
+        // Verify the user has permission to toggle this resource
+        const canToggle = await User.findOne({
+            _id: req.user._id,
+            $or: [
+                // School dean can toggle if it's their school
+                { role: 'school_dean', school: req.user.school },
+                // Department head can toggle if it's their department
+                { role: 'department_head', department: req.user.department }
+            ]
+        });
+
+        if (!canToggle) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'You do not have permission to toggle this resource status'
+            });
+        }
+
+        // Instead of changing status, we'll add an isAvailable field
+        assignment.isAvailable = !assignment.isAvailable;
+        await assignment.save();
+
+        res.json({
+            status: 'success',
+            message: `Resource is now ${assignment.isAvailable ? 'available' : 'unavailable'} for staff`,
+            data: assignment
+        });
+    } catch (error) {
+        console.error('Error toggling assignment status:', error);
+        res.status(400).json({
+            status: 'error',
+            message: error.message || 'Failed to toggle assignment status'
+        });
     }
 });
 
