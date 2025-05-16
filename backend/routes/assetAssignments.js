@@ -81,7 +81,8 @@ router.get('/staff-available-resources', auth, async (req, res) => {
             })
             .populate('resource')
             .populate('assignedBy')
-            .lean() : [],
+            .lean()
+            .then(assignments => assignments.map(a => ({ ...a, items: a.items || [] }))) : [],
             departmentHead ? AssetAssignment.find({
                 $or: [
                     { "requestedBy.department": staff.department },
@@ -93,7 +94,8 @@ router.get('/staff-available-resources', auth, async (req, res) => {
             })
             .populate('resource')
             .populate('assignedBy')
-            .lean() : []
+            .lean()
+            .then(assignments => assignments.map(a => ({ ...a, items: a.items || [] }))) : []
         ]);
 
         // Filter out any assignments where the resource doesn't exist

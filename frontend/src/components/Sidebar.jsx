@@ -102,6 +102,7 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
             path: '/department-head/dashboard',
             section: 'main'
           },
+          
           {
             text: 'Available Resources',
             icon: <ResourcesIcon />,
@@ -115,11 +116,43 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
             section: 'main'
           },
           {
-            text: 'Pending Requests',
+            text: 'Transfer Resources',
             icon: <SwapHoriz />,
-            path: '/department-head/pending-requests',
-            section: 'main'
+            subItems: [
+              {
+                text: 'Transfer Form',
+                path: '/department-head/transfer-resources/form',
+              },
+              {
+                text: 'Transferred Resources',
+                path: '/department-head/transfer-resources/list',
+              },
+            ],
           },
+          {
+            text: 'Requests',
+            icon: <SwapHoriz />,
+            subItems: [
+              {
+                text: 'Pending Requests',
+                  path: '/department-head/pending-requests',
+                  section: 'main'
+              },
+              {
+                text: 'Request History',
+                path: '/department-head/request-history',
+              },
+            ],
+          },
+
+
+
+          // {
+          //   text: 'Pending Requests',
+          //   icon: <SwapHoriz />,
+          //   path: '/department-head/pending-requests',
+          //   section: 'main'
+          // },
           {
             text: 'Settings',
             icon: <SettingsIcon />,
@@ -137,11 +170,7 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
             icon: <ResourcesIcon />,
             path: '/resources/assigned',
           },
-          {
-            text: 'Transfer Resources',
-            icon: <SwapHoriz />,
-            path: '/resources/transfer',
-          },
+        
           {
             text: 'Requests',
             icon: <SwapHoriz />,
@@ -193,6 +222,20 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
             section: 'main'
           },
           {
+            text: 'Transfer Resources',
+            icon: <SwapHoriz />,
+            subItems: [
+              {
+                text: 'Transfer Form',
+                path: '/school-dean/transfer-resources/form',
+              },
+              {
+                text: 'Transferred Resources',
+                path: '/school-dean/transfer-resources/list',
+              },
+            ],
+          },
+          {
             text: 'Settings',
             icon: <SettingsIcon />,
             path: '/school-dean/settings',
@@ -223,8 +266,16 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
           {
             text: 'Transfer Resources',
             icon: <SwapHoriz />,
-            path: '/staff/transfer-resources',
-            section: 'main'
+            subItems: [
+              {
+                text: 'Transfer Form',
+                path: '/staff/transfer-resources/form',
+              },
+              {
+                text: 'Transferred Resources',
+                path: '/staff/transfer-resources/list',
+              },
+            ],
           },
           {
             text: 'Settings',

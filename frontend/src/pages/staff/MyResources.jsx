@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -21,6 +22,7 @@ import ResourceCard from '../../components/ResourceCard';
 import axios from 'axios';
 
 const MyResources = () => {
+  const navigate = useNavigate();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -60,8 +62,15 @@ const MyResources = () => {
   };
 
   const handleTransfer = (resource) => {
-    // TODO: Implement transfer functionality
-    console.log('Transfer resource:', resource);
+    // Navigate to transfer form with resource data
+    navigate('/resources/transfer', { 
+      state: { 
+        resourceId: resource._id,
+        resourceName: resource.resource.name,
+        fromDivision: resource.assignedTo?.department,
+        quantity: resource.items?.reduce((total, item) => total + item.quantity, 0) || 0
+      } 
+    });
   };
 
   // Filter and search functions

@@ -49,10 +49,14 @@ const ResourceRequestForm = () => {
     if (selectedResourceData) {
       try {
         const resource = JSON.parse(selectedResourceData);
+        console.log('Received resource data:', resource); // Debug log
+
+        // Extract price information
         const birr = resource.price?.birr || 0;
         const cents = resource.price?.cents || 0;
 
-        setItems([{
+        // Set initial item data
+        const initialItem = {
           itemNo: 1,
           resource: resource.resourceId,
           description: resource.description || '',
@@ -63,8 +67,12 @@ const ResourceRequestForm = () => {
           totalBirr: birr.toString(),
           totalCents: cents.toString(),
           remarks: ''
-        }]);
+        };
 
+        console.log('Setting item data:', initialItem); // Debug log
+        setItems([initialItem]);
+
+        // Clean up
         localStorage.removeItem('selectedResource');
       } catch (error) {
         console.error('Error loading resource data:', error);
@@ -209,7 +217,7 @@ const ResourceRequestForm = () => {
               value={item.description}
               variant="outlined"
               size="small"
-              InputProps={{ readOnly: true }}
+              onChange={(e) => handleItemChange(index, 'description', e.target.value)}
             />
           </Grid>
 
@@ -220,7 +228,7 @@ const ResourceRequestForm = () => {
               value={item.unitOfMeasure}
               variant="outlined"
               size="small"
-              InputProps={{ readOnly: true }}
+              onChange={(e) => handleItemChange(index, 'unitOfMeasure', e.target.value)}
             />
           </Grid>
 

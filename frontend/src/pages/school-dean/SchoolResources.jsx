@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Typography,
@@ -21,6 +23,8 @@ import ResourceCard from '../../components/ResourceCard';
 import axios from 'axios';
 
 const SchoolResources = () => {
+  const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -82,9 +86,15 @@ const SchoolResources = () => {
     }
   };
 
-  const handleTransfer = (resourceId) => {
-    // Handle transfer logic
-    console.log('Transfer resource:', resourceId);
+  const handleTransfer = (resource) => {
+    navigate('/resources/transfer', { 
+      state: { 
+        resourceId: resource._id,
+        resourceName: resource.resource.name,
+        fromDivision: user?.school,
+        quantity: resource.items?.reduce((total, item) => total + item.quantity, 0) || 0
+      } 
+    });
   };
 
   // Group identical resources and combine their quantities
@@ -219,8 +229,8 @@ const SchoolResources = () => {
                 <ResourceCard
                   key={resource._id}
                   resource={resource}
-                  onReturn={() => handleReturn(resource._id)}
-                  onTransfer={() => handleTransfer(resource._id)}
+                  onReturn={() => handleReturn(resource)}
+                  onTransfer={() => handleTransfer(resource)}
                   onToggleStatus={handleToggleStatus}
                   userRole="school_dean"
                 />

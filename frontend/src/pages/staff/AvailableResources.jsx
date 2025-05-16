@@ -108,13 +108,19 @@ const AvailableResources = () => {
 
   const handleRequestResource = (resource) => {
     try {
+      // Format the resource data properly
       const resourceData = {
-        ...resource.resource,
+        resourceId: resource.resource._id,
+        name: resource.resource.name,
+        description: resource.resource.description || '',
+        unitOfMeasure: resource.resource.unitOfMeasure || '',
+        price: resource.resource.price || { birr: 0, cents: 0 },
         source: resource.source,
         assignedBy: resource.assignedBy,
-        requestType: resource.source.type // 'school' or 'department'
+        requestType: resource.source.type
       };
       
+      console.log('Sending resource data:', resourceData); // Debug log
       localStorage.setItem('selectedResource', JSON.stringify(resourceData));
       navigate('/staff/request-resource');
     } catch (error) {
@@ -152,6 +158,9 @@ const AvailableResources = () => {
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 <strong>Status:</strong> {formatField(resource.resource.status)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                <strong>Quantity:</strong> {resource.items?.reduce((total, item) => total + item.quantity, 0) || 0}
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 <strong>Source:</strong> {resource.source.type === 'school' ? 'School' : 'Department'}

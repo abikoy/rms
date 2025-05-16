@@ -107,11 +107,10 @@ const AvailableResources = () => {
     }
   };
 
-  // Filter for only unassigned, available, and school-specific resources
+  // Filter for only unassigned and available resources
   const availableResources = resources.filter(resource => 
     !resource.assignedTo && 
-    resource.status === 'available' &&
-    resource.school === user.school
+    resource.status === 'available'
   );
 
   // Define available resource types
