@@ -30,6 +30,7 @@ import Settings from './pages/admin/Settings';
 import Profile from './pages/common/Profile';
 import TransferResources from './pages/resources/TransferResources';
 import TransferredResources from './pages/resources/TransferredResources';
+import PendingTransfers from './pages/resources/PendingTransfers';
 import AssignResourcePage from './pages/resources/AssignResourcePage';
 import AssignedResourcesPage from './pages/resources/AssignedResourcesPage';
 import AddIoTAsset from './pages/asset-managers/iot/AddIoTAsset';
@@ -225,6 +226,7 @@ const AppContent = () => {
       <Route path="/staff/request-resource" element={<StaffRoute><ResourceRequestForm /></StaffRoute>} />
       <Route path="/staff/transfer-resources/form" element={<StaffRoute><TransferResources /></StaffRoute>} />
       <Route path="/staff/transfer-resources/list" element={<StaffRoute><TransferredResources /></StaffRoute>} />
+      <Route path="/staff/transfer-resources/pending" element={<StaffRoute><PendingTransfers /></StaffRoute>} />
       <Route path="/staff/settings" element={<StaffRoute><StaffSettings /></StaffRoute>} />
 
       {/* Department Head Routes */}
@@ -234,6 +236,7 @@ const AppContent = () => {
       <Route path="/department-head/resources" element={<DepartmentHeadRoute><DepartmentResources /></DepartmentHeadRoute>} />
       <Route path="/department-head/transfer-resources/form" element={<DepartmentHeadRoute><TransferResources /></DepartmentHeadRoute>} />
       <Route path="/department-head/transfer-resources/list" element={<DepartmentHeadRoute><TransferredResources /></DepartmentHeadRoute>} />
+      <Route path="/department-head/transfer-resources/pending" element={<DepartmentHeadRoute><PendingTransfers /></DepartmentHeadRoute>} />
       <Route path="/department-head/pending-requests" element={<DepartmentHeadRoute><PendingRequests /></DepartmentHeadRoute>} />
       <Route path="/department-head/settings" element={<DepartmentHeadRoute><Settings /></DepartmentHeadRoute>} />
 

@@ -29,6 +29,35 @@ import DashboardLayout from '../../components/DashboardLayout';
 import api from '../../utils/axios';
 
 const TransferResources = () => {
+  // Validation helper functions
+  const isNumeric = (value) => /^\d+$/.test(value);
+  const isPositiveNumber = (value) => /^\d*\.?\d+$/.test(value) && parseFloat(value) >= 0;
+
+  // Handle cents to birr conversion
+  const handlePriceChange = (index, field, value) => {
+    const newItems = [...items];
+    const currentItem = newItems[index];
+
+    if (field === 'price.cents') {
+      const cents = parseInt(value, 10);
+      if (cents >= 100) {
+        // Convert excess cents to birr
+        const additionalBirr = Math.floor(cents / 100);
+        const remainingCents = cents % 100;
+        currentItem.price.birr = (parseInt(currentItem.price.birr, 10) || 0) + additionalBirr;
+        currentItem.price.cents = remainingCents;
+      } else {
+        currentItem.price.cents = cents;
+      }
+    } else if (field === 'price.birr') {
+      currentItem.price.birr = parseInt(value, 10) || 0;
+    }
+
+    setItems(newItems);
+  };
+
+  // Validation state
+  const [errors, setErrors] = useState({});
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
@@ -52,19 +81,41 @@ const TransferResources = () => {
   });
 
   // Initialize items with resource data if available
-  const [items, setItems] = useState([{
-    serialNo: 1,
-    assetDescription: location.state?.resourceName || '',
-    unitOfMeasure: '',
-    quantity: location.state?.quantity || 1,
-    fainNo: '',
-    fainDate: new Date().toISOString().split('T')[0],
-    price: {
-      birr: 0,
-      cents: 0
-    },
-    remark: ''
-  }]);
+  const [items, setItems] = useState(
+    location.state?.items ? 
+    location.state.items.map((item, index) => ({
+      serialNo: index + 1,
+      resourceId: item.resourceId,
+      resourceSerialNumber: item.resourceSerialNumber,
+      assetDescription: item.assetDescription,
+      unitOfMeasure: 'piece',
+      quantity: item.quantity,
+      fainNo: '',
+      fainDate: new Date().toISOString().split('T')[0],
+      price: {
+        birr: 0,
+        cents: 0
+      },
+      unitPrice: 0,
+      remark: ''
+    })) : 
+    [{
+      serialNo: 1,
+      resourceId: '',
+      resourceSerialNumber: '',
+      assetDescription: '',
+      unitOfMeasure: 'piece',
+      quantity: 1,
+      fainNo: '',
+      fainDate: new Date().toISOString().split('T')[0],
+      price: {
+        birr: 0,
+        cents: 0
+      },
+      unitPrice: 0,
+      remark: ''
+    }]
+  );
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -151,31 +202,166 @@ const TransferResources = () => {
     return date.toISOString().split('T')[0];
   };
 
+  // Validate form data
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Validate transfer number
+    if (!isNumeric(formData.transferNo)) {
+      newErrors.transferNo = 'Transfer number must be numeric';
+    }
+
+    // Validate toDivision
+    if (!formData.toDivision) {
+      newErrors.toDivision = 'Destination division is required';
+    }
+
+    // Validate recipient
+    if (!formData.recipientName) {
+      newErrors.recipientName = 'Recipient name is required';
+    }
+
+    // Validate items
+    const itemErrors = items.map(item => {
+      const error = {};
+      
+      if (!item.resourceId) {
+        error.resourceId = 'Resource ID is required';
+      }
+
+      if (!item.resourceSerialNumber) {
+        error.resourceSerialNumber = 'Resource Serial Number is required';
+      }
+
+      if (!item.assetDescription) {
+        error.assetDescription = 'Asset Description is required';
+      }
+
+      if (item.fainNo && !isNumeric(item.fainNo)) {
+        error.fainNo = 'FAIN number must be numeric';
+      }
+
+      if (!isPositiveNumber(item.price.birr)) {
+        error.priceBirr = 'Price (Birr) must be a positive number';
+      }
+
+      if (!isPositiveNumber(item.price.cents) || item.price.cents > 99) {
+        error.priceCents = 'Cents must be between 0 and 99';
+      }
+
+      return Object.keys(error).length > 0 ? error : null;
+    });
+
+    if (itemErrors.some(error => error !== null)) {
+      newErrors.items = itemErrors;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
     try {
-      const transferData = {
+      // Validate required fields before submission
+      const hasRequiredFields = items.every(item => 
+        item.resourceId && item.resourceSerialNumber && item.assetDescription
+      );
+
+      if (!hasRequiredFields) {
+        setSnackbar({
+          open: true,
+          message: 'Please fill in all required fields for each item',
+          severity: 'error'
+        });
+        return;
+      }
+
+      const response = await api.post('/api/transfers', {
         ...formData,
-        resourceId: location.state?.resourceId,
         items: items.map(item => ({
           ...item,
-          fainDate: item.fainDate ? new Date(item.fainDate).toISOString() : null
+          resourceId: item.resourceId,
+          resourceSerialNumber: item.resourceSerialNumber,
+          price: {
+            birr: parseFloat(item.price.birr) || 0,
+            cents: parseInt(item.price.cents) || 0
+          }
         }))
-      };
-      
-      const token = localStorage.getItem('token');
-      await api.post('/api/transfers', transferData, {
-        headers: { Authorization: `Bearer ${token}` }
       });
-      setSnackbar({
-        open: true,
-        message: 'Transfer form submitted successfully',
-        severity: 'success'
-      });
+
+      if (response.data.status === 'success') {
+        setSnackbar({
+          open: true,
+          message: 'Transfer created successfully',
+          severity: 'success'
+        });
+
+        // Reset form
+        setFormData({
+          transferNo: '',
+          date: getFormattedDate(getTodayDate()),
+          fromDivision: '',
+          toDivision: '',
+          assetTransferorName: '',
+          assetTransferorDate: '',
+          propertyHeadName: '',
+          propertyHeadDate: '',
+          witnessName: '',
+          recipientName: '',
+          fromDepartment: '',
+          toDepartment: '',
+          quantity: 1,
+          reason: ''
+        });
+        setItems([{
+          serialNo: 1,
+          resourceId: '',
+          resourceSerialNumber: '',
+          assetDescription: '',
+          unitOfMeasure: '',
+          quantity: 1,
+          fainNo: '',
+          fainDate: '',
+          price: {
+            birr: 0,
+            cents: 0
+          },
+          remark: ''
+        }]);
+        setErrors({});
+      }
     } catch (error) {
+      console.error('Error creating transfer:', error);
+      
+      const errorMessage = error.response?.data?.message;
+      
+      // Handle specific validation errors
+      if (errorMessage?.includes('transfer number is already in use')) {
+        setErrors(prev => ({
+          ...prev,
+          transferNo: 'This transfer number is already in use. Please use a different number.'
+        }));
+      } else if (errorMessage?.includes('division') || errorMessage?.includes('not exist')) {
+        setErrors(prev => ({
+          ...prev,
+          toDivision: errorMessage
+        }));
+      } else if (errorMessage?.includes('Recipient')) {
+        setErrors(prev => ({
+          ...prev,
+          recipientName: errorMessage
+        }));
+      }
+      
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || 'Failed to submit transfer form',
+        message: errorMessage || 'Failed to create transfer',
         severity: 'error'
       });
     }
@@ -199,9 +385,20 @@ const TransferResources = () => {
                 <TextField
                   fullWidth
                   label="Transfer No"
-                  name="transferNo"
                   value={formData.transferNo}
-                  onChange={(e) => setFormData({ ...formData, transferNo: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || isNumeric(value)) {
+                      setFormData({ ...formData, transferNo: value });
+                    }
+                  }}
+                  error={!!errors.transferNo}
+                  helperText={errors.transferNo}
+                  required
+                  inputProps={{
+                    pattern: '\\d*',
+                    inputMode: 'numeric'
+                  }}
                 />
               </Grid>
               <Grid item xs={12} md={4}>
@@ -297,11 +494,21 @@ const TransferResources = () => {
                             <Grid container spacing={1}>
                               <Grid item xs={6}>
                                 <TextField
-                                  type="text"
-                                  size="small"
+                                  fullWidth
+                                  label="FAIN No"
                                   value={item.fainNo}
-                                  onChange={(e) => handleItemChange(index, 'fainNo', e.target.value)}
-                                  placeholder="FAIN No."
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value === '' || isNumeric(value)) {
+                                      handleItemChange(index, 'fainNo', value);
+                                    }
+                                  }}
+                                  error={!!errors.items?.[index]?.fainNo}
+                                  helperText={errors.items?.[index]?.fainNo}
+                                  inputProps={{
+                                    pattern: '\\d*',
+                                    inputMode: 'numeric'
+                                  }}
                                 />
                               </Grid>
                               <Grid item xs={6}>
@@ -332,20 +539,43 @@ const TransferResources = () => {
                             <Grid container spacing={1}>
                               <Grid item xs={6}>
                                 <TextField
+                                  fullWidth
+                                  label="Price (Birr)"
                                   type="number"
-                                  size="small"
                                   value={item.price.birr}
-                                  onChange={(e) => handleItemChange(index, 'price', { ...item.price, birr: parseInt(e.target.value) })}
-                                  placeholder="Birr"
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value === '' || isPositiveNumber(value)) {
+                                      handlePriceChange(index, 'price.birr', value);
+                                    }
+                                  }}
+                                  error={!!errors.items?.[index]?.priceBirr}
+                                  helperText={errors.items?.[index]?.priceBirr}
+                                  inputProps={{
+                                    min: 0,
+                                    step: 'any'
+                                  }}
                                 />
                               </Grid>
                               <Grid item xs={6}>
                                 <TextField
+                                  fullWidth
+                                  label="Price (Cents)"
                                   type="number"
-                                  size="small"
                                   value={item.price.cents}
-                                  onChange={(e) => handleItemChange(index, 'price', { ...item.price, cents: parseInt(e.target.value) })}
-                                  placeholder="Cents"
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value === '' || (isPositiveNumber(value) && parseInt(value) <= 99)) {
+                                      handlePriceChange(index, 'price.cents', value);
+                                    }
+                                  }}
+                                  error={!!errors.items?.[index]?.priceCents}
+                                  helperText={errors.items?.[index]?.priceCents}
+                                  inputProps={{
+                                    min: 0,
+                                    max: 99,
+                                    step: 1
+                                  }}
                                 />
                               </Grid>
                             </Grid>

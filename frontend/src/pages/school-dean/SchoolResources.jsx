@@ -44,11 +44,15 @@ const SchoolResources = () => {
 
   const fetchResources = async () => {
     try {
-      const token = localStorage.getItem('token');
+      // Only fetch resources from accepted transfers
       const response = await axios.get('http://localhost:5003/api/asset-assignments/school-resources', {
-        headers: { Authorization: `Bearer ${token}` }
+        params: {
+          transferStatus: 'accepted',
+          school: user.school
+        },
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
-
+      
       if (response.data.status === 'success') {
         setResources(response.data.data);
       }
@@ -87,13 +91,20 @@ const SchoolResources = () => {
   };
 
   const handleTransfer = (resource) => {
-    navigate('/resources/transfer', { 
-      state: { 
-        resourceId: resource._id,
+    navigate('/resources/transfer', {
+      state: {
+        resourceId: resource.resource._id,
+        resourceSerialNumber: resource.resource.serialNumber,
         resourceName: resource.resource.name,
-        fromDivision: user?.school,
-        quantity: resource.items?.reduce((total, item) => total + item.quantity, 0) || 0
-      } 
+        fromDivision: user.school,
+        quantity: resource.items?.reduce((total, item) => total + item.quantity, 0) || 1,
+        items: [{
+          resourceId: resource.resource._id,
+          resourceSerialNumber: resource.resource.serialNumber,
+          assetDescription: resource.resource.name,
+          quantity: resource.items?.reduce((total, item) => total + item.quantity, 0) || 1
+        }]
+      }
     });
   };
 

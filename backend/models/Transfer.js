@@ -19,7 +19,16 @@ const transferSchema = new mongoose.Schema({
     required: true
   },
   items: [{
-    serialNo: Number,
+    resourceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Resource',
+      required: true
+    },
+    resourceSerialNumber: {
+      type: String,
+      required: true
+    },
+    transferItemNo: Number,
     assetDescription: String,
     unitOfMeasure: String,
     quantity: Number,
@@ -47,8 +56,28 @@ const transferSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'approved', 'rejected'],
+    enum: ['pending', 'accepted', 'rejected'],
     default: 'pending'
+  },
+  actionDate: {
+    type: Date,
+    default: null
+  },
+  actionBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  transferStatus: {
+    type: String,
+    enum: ['initiated', 'accepted', 'rejected'],
+    default: 'initiated'
+  },
+  acceptedAt: {
+    type: Date
+  },
+  rejectedAt: {
+    type: Date
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,

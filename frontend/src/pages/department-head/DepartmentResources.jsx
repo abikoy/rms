@@ -65,13 +65,20 @@ const DepartmentResources = () => {
   };
 
   const handleTransfer = (resource) => {
-    navigate('/resources/transfer', { 
-      state: { 
-        resourceId: resource._id,
+    navigate('/resources/transfer', {
+      state: {
+        resourceId: resource.resource._id,
+        resourceSerialNumber: resource.resource.serialNumber,
         resourceName: resource.resource.name,
-        fromDivision: user?.department,
-        quantity: resource.items?.reduce((total, item) => total + item.quantity, 0) || 0
-      } 
+        fromDivision: user.department,
+        quantity: resource.items?.reduce((total, item) => total + item.quantity, 0) || 1,
+        items: [{
+          resourceId: resource.resource._id,
+          resourceSerialNumber: resource.resource.serialNumber,
+          assetDescription: resource.resource.name,
+          quantity: resource.items?.reduce((total, item) => total + item.quantity, 0) || 1
+        }]
+      }
     });
   };
 
@@ -241,7 +248,9 @@ const DepartmentResources = () => {
 
           {/* Empty State */}
           {filteredResources.length === 0 && !error && (
-            <Alert 
+                    
+            
+           <Alert 
               severity="info" 
               sx={{ 
                 mt: 3,
@@ -253,6 +262,10 @@ const DepartmentResources = () => {
             >
               No resources found matching your criteria.
             </Alert>
+           
+          //  <Typography variant="h5" gutterBottom>
+          //       No resources found matching your criteria.         
+          //    </Typography>
           )}
 
           {/* Pagination */}

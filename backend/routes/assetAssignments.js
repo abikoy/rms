@@ -389,11 +389,16 @@ router.get('/department-resources', auth, async (req, res) => {
         }
 
         const assignments = await AssetAssignment.find({
-            $or: [
-                { "requestedBy.department": user.department },
-                { "receivedBy.department": user.department },
-                { "certifiedBy.department": user.department }
+            $and: [
+                 { "requestedBy.department": user.department },
+                // // Only show requests made by department head or where requester role is department_head
+                 { $or: [
+                     { "requestedBy.role": "department_head" },
+                    { "requestedBy.name": user.fullName},
+                    {"receivedBy.name": user.fullName},
+                ]}
             ],
+         
             status: 'assigned'
         })
         .populate({
@@ -426,6 +431,17 @@ router.get('/staff-resources', auth, async (req, res) => {
             });
         }
 
+        // const assignments = await AssetAssignment.find({
+        //     $and: [
+        //         { $or: [
+        //             { "receivedBy.userId": user._id },
+        //             { "requestedBy.userId": user._id }
+        //         ]},
+        //         { "requestedBy.role": "staff" }
+        //     ],
+        
+        //     status: 'assigned'
+        // })
         const assignments = await AssetAssignment.find({
             "receivedBy.name": user.fullName,
             status: 'assigned'

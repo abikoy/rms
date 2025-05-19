@@ -40,7 +40,7 @@ const auth = async (req, res, next) => {
       
       // Get user from database
       const user = await User.findById(decoded.id)
-        .select('_id role status school department')
+        .select('_id fullName role status school department')
         .lean();
 
       if (!user) {

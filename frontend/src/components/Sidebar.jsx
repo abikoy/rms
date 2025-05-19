@@ -127,6 +127,10 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
                 text: 'Transferred Resources',
                 path: '/department-head/transfer-resources/list',
               },
+              {
+                text: 'Pending Transfers',
+                path: '/department-head/transfer-resources/pending',
+              },
             ],
           },
           {
@@ -233,6 +237,10 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
                 text: 'Transferred Resources',
                 path: '/school-dean/transfer-resources/list',
               },
+              {
+                text: 'Pending Transfers',
+                path: '/school-dean/transfer-resources/pending',
+              },
             ],
           },
           {
@@ -274,6 +282,10 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
               {
                 text: 'Transferred Resources',
                 path: '/staff/transfer-resources/list',
+              },
+              {
+                text: 'Pending Transfers',
+                path: '/staff/transfer-resources/pending',
               },
             ],
           },
