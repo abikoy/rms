@@ -415,34 +415,50 @@ router.patch('/:id/action', auth, async (req, res) => {
           const currentDate = new Date();
           const transferDate = transfer.date || currentDate;
 
+          // Set tomorrow as minimum expiration date for non-fixed assets
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          tomorrow.setHours(0, 0, 0, 0);
+
+          // Prepare items with proper expiration date for non-fixed assets
+          const assignmentItems = [{
+            description: item.assetDescription || resource.name,
+            unitOfMeasure: item.unitOfMeasure || 'piece',
+            quantity: item.quantity,
+            unitPrice: item.price?.birr || resource.unitPrice?.birr || 0,
+            remark: item.remark || '',
+            // Set expiration date only for non-fixed assets
+            ...(resource.type === 'non_fixed_assets' && {
+              expirationDate: item.expirationDate || tomorrow
+            })
+          }];
+
           const newAssignment = new AssetAssignment({
             resource: item.resourceId,
             requestId: transfer._id.toString(),
             requestedBy: {
               name: transfer.createdBy.fullName,
               department: transfer.fromDivision,
-              date: transferDate
+              date: transferDate,
+              userId: transfer.createdBy._id
             },
             receivedBy: {
               name: req.user.fullName,
               department: transfer.toDivision,
-              date: currentDate
+              date: currentDate,
+              userId: req.user._id
             },
             certifiedBy: {
               name: req.user.fullName,
               department: transfer.toDivision,
-              date: currentDate
+              date: currentDate,
+              userId: req.user._id
             },
             assignedBy: transfer.createdBy._id,
             assignedAt: currentDate,
             status: 'assigned',
-            items: [{
-              description: item.assetDescription || resource.name,
-              unitOfMeasure: item.unitOfMeasure || 'piece',
-              quantity: item.quantity,
-              unitPrice: item.price?.birr || resource.unitPrice?.birr || 0,
-              remark: item.remark || ''
-            }],
+            isAvailable: true,
+            items: assignmentItems,
             requisitionDivision: transfer.toDivision
           });
 

@@ -72,30 +72,137 @@ router.get('/staff-available-resources', auth, async (req, res) => {
         const [schoolResources, deptResources] = await Promise.all([
             schoolDean ? AssetAssignment.find({
                 $or: [
-                    { "requestedBy.department": staff.school },
                     { "receivedBy.department": staff.school },
-                    { "certifiedBy.department": staff.school }
+                    { requisitionDivision: staff.school }
                 ],
-                status: 'assigned',
-                isAvailable: true // Only get resources marked as available
+                status: 'assigned'
             })
-            .populate('resource')
+            .populate({
+                path: 'resource',
+                select: 'name serialNumber type assetClass model location status expirationDate price quantity unitPrice description'
+            })
             .populate('assignedBy')
+            .sort({ updatedAt: -1 })
             .lean()
-            .then(assignments => assignments.map(a => ({ ...a, items: a.items || [] }))) : [],
+            .then(async assignments => {
+                // First, group all assignments by resource ID to check availability
+                const resourceAvailability = new Map();
+                const resourceMap = new Map();
+                
+                // First pass: Check availability status of latest assignments
+                assignments.forEach(assignment => {
+                    if (!assignment.resource) return;
+                    const resourceId = assignment.resource._id.toString();
+                    
+                    // If we haven't seen this resource, or this assignment is newer
+                    if (!resourceAvailability.has(resourceId) ||
+                        assignment.updatedAt > resourceAvailability.get(resourceId).updatedAt) {
+                        resourceAvailability.set(resourceId, {
+                            isAvailable: assignment.isAvailable,
+                            updatedAt: assignment.updatedAt
+                        });
+                    }
+                });
+                
+                // Second pass: Only process resources where latest assignment is available
+                assignments.forEach(assignment => {
+                    if (!assignment.resource) return;
+                    const resourceId = assignment.resource._id.toString();
+                    
+                    // Skip if the latest assignment for this resource is not available
+                    const availability = resourceAvailability.get(resourceId);
+                    if (!availability?.isAvailable) return;
+                    
+                    if (!resourceMap.has(resourceId)) {
+                        resourceMap.set(resourceId, {
+                            assignment: assignment,
+                            items: [],
+                            totalQuantity: 0
+                        });
+                    }
+                    
+                    const data = resourceMap.get(resourceId);
+                    if (assignment.items && assignment.items.length > 0) {
+                        assignment.items.forEach(item => {
+                            data.totalQuantity += (item.quantity || 0);
+                            data.items.push(item);
+                        });
+                    }
+                });
+                
+                return Array.from(resourceMap.values()).map(data => ({
+                    ...data.assignment,
+                    items: data.items,
+                    totalQuantity: data.totalQuantity
+                }));
+            }) : [],
+            
             departmentHead ? AssetAssignment.find({
                 $or: [
-                    { "requestedBy.department": staff.department },
                     { "receivedBy.department": staff.department },
-                    { "certifiedBy.department": staff.department }
+                    { requisitionDivision: staff.department }
                 ],
-                status: 'assigned',
-                isAvailable: true // Only get resources marked as available
+               status: 'assigned'
             })
-            .populate('resource')
+            .populate({
+                path: 'resource',
+                select: 'name serialNumber type assetClass model location status expirationDate price quantity unitPrice description'
+            })
             .populate('assignedBy')
+            .sort({ updatedAt: -1 })
             .lean()
-            .then(assignments => assignments.map(a => ({ ...a, items: a.items || [] }))) : []
+            .then(async assignments => {
+                // First, group all assignments by resource ID to check availability
+                const resourceAvailability = new Map();
+                const resourceMap = new Map();
+                
+                // First pass: Check availability status of latest assignments
+                assignments.forEach(assignment => {
+                    if (!assignment.resource) return;
+                    const resourceId = assignment.resource._id.toString();
+                    
+                    // If we haven't seen this resource, or this assignment is newer
+                    if (!resourceAvailability.has(resourceId) ||
+                        assignment.updatedAt > resourceAvailability.get(resourceId).updatedAt) {
+                        resourceAvailability.set(resourceId, {
+                            isAvailable: assignment.isAvailable,
+                            updatedAt: assignment.updatedAt
+                        });
+                    }
+                });
+                
+                // Second pass: Only process resources where latest assignment is available
+                assignments.forEach(assignment => {
+                    if (!assignment.resource) return;
+                    const resourceId = assignment.resource._id.toString();
+                    
+                    // Skip if the latest assignment for this resource is not available
+                    const availability = resourceAvailability.get(resourceId);
+                    if (!availability?.isAvailable) return;
+                    
+                    if (!resourceMap.has(resourceId)) {
+                        resourceMap.set(resourceId, {
+                            assignment: assignment,
+                            items: [],
+                            totalQuantity: 0
+                        });
+                    }
+                    
+                    const data = resourceMap.get(resourceId);
+                    if (assignment.items && assignment.items.length > 0) {
+                        assignment.items.forEach(item => {
+                            data.totalQuantity += (item.quantity || 0);
+                            data.items.push(item);
+                        });
+                    }
+                });
+                
+                return Array.from(resourceMap.values()).map(data => ({
+                    ...data.assignment,
+                    items: data.items,
+                    totalQuantity: data.totalQuantity
+                }));
+            }) : []
         ]);
 
         // Filter out any assignments where the resource doesn't exist
@@ -389,16 +496,22 @@ router.get('/department-resources', auth, async (req, res) => {
         }
 
         const assignments = await AssetAssignment.find({
-            $and: [
-                 { "requestedBy.department": user.department },
-                // // Only show requests made by department head or where requester role is department_head
-                 { $or: [
-                     { "requestedBy.role": "department_head" },
-                    { "requestedBy.name": user.fullName},
-                    {"receivedBy.name": user.fullName},
-                ]}
+            $or: [
+                // Resources where this department is the current holder
+                { "receivedBy.name": user.fullName },
+                // Resources requested by this department
+
+                { "requestedBy.role": "department_head" },
+                { "requestedBy.department": user.fullName },
+                // Resources assigned to this department
+                // { requisitionDivision: user.department }
             ],
-         
+
+
+            // { "requestedBy.name": user.fullName},
+            // {"receivedBy.name": user.fullName},
+
+
             status: 'assigned'
         })
         .populate({
@@ -443,7 +556,12 @@ router.get('/staff-resources', auth, async (req, res) => {
         //     status: 'assigned'
         // })
         const assignments = await AssetAssignment.find({
-            "receivedBy.name": user.fullName,
+            $or: [
+                // Resources directly received by the staff
+                { "receivedBy.userId": user._id },
+                // Resources where staff is the current holder
+                { "receivedBy.name": user.fullName }
+            ],
             status: 'assigned'
         })
         .populate({
@@ -519,14 +637,20 @@ router.get('/staff-available-resources', auth, async (req, res) => {
                 receivedBy: schoolDean._id,
                 status: 'assigned'
             })
-            .populate('resource')
+            .populate({
+                path: 'resource',
+                select: 'name serialNumber type assetClass model location status expirationDate price quantity unitPrice description'
+            })
             .populate('assignedBy', 'fullName')
             .lean() : [],
             departmentHead ? AssetAssignment.find({
                 receivedBy: departmentHead._id,
                 status: 'assigned'
             })
-            .populate('resource')
+            .populate({
+                path: 'resource',
+                select: 'name serialNumber type assetClass model location status expirationDate price quantity unitPrice description'
+            })
             .populate('assignedBy', 'fullName')
             .lean() : []
         ]);
@@ -618,7 +742,10 @@ router.delete('/:id', auth, async (req, res) => {
     try {
         // Find the assignment
         const assignment = await AssetAssignment.findById(req.params.id)
-            .populate('resource')
+            .populate({
+                path: 'resource',
+                select: 'name serialNumber type assetClass model location status expirationDate price quantity unitPrice description'
+            })
             .session(session);
 
         if (!assignment) {

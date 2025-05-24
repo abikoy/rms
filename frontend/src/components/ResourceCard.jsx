@@ -22,9 +22,9 @@ import {
 const ResourceCard = ({ resource, onReturn, onTransfer, onToggleStatus, userRole }) => {
     const resourceDetails = resource.resource || {};
     
+    // Don't destructure type as we need to access it directly from resourceDetails
     const {
         name,
-        type,
         status,
         description,
         serialNumber,
@@ -34,7 +34,7 @@ const ResourceCard = ({ resource, onReturn, onTransfer, onToggleStatus, userRole
     // Calculate total assigned quantity from items array
     const assignedQuantity = resource.items?.reduce((total, item) => total + item.quantity, 0) || 0;
 
-    const formattedType = type === 'non_fixed_assets' ? 'Non-Fixed Asset' : 'Fixed Asset';
+    const formattedType = resourceDetails.type === 'non_fixed_assets' ? 'Non-Fixed Asset' : 'Fixed Asset';
     
     // Format unit price with proper validation
     const formattedPrice = (() => {
@@ -51,9 +51,14 @@ const ResourceCard = ({ resource, onReturn, onTransfer, onToggleStatus, userRole
         return `${birr}.${cents.toString().padStart(2, '0')} Birr`;
     })();
 
+    // Check if resource is expired
+    const isExpired = resourceDetails.type === 'non_fixed_assets' && resource.items?.[0]?.expirationDate
+        ? new Date() > new Date(resource.items[0].expirationDate)
+        : false;
+
     // Determine status color and clickability
-    const statusColor = resource.isAvailable ? 'info' : 'success';
-    const canToggleStatus = ['school_dean', 'department_head'].includes(userRole);
+    const statusColor = isExpired ? 'error' : (resource.isAvailable ? 'info' : 'success');
+    const canToggleStatus = !isExpired && ['school_dean', 'department_head'].includes(userRole);
 
     return (
         <Card 
@@ -147,6 +152,35 @@ const ResourceCard = ({ resource, onReturn, onTransfer, onToggleStatus, userRole
                     <Typography variant="caption" display="block" sx={{ color: 'text.secondary' }}>
                         Date: {resource.assignedAt ? new Date(resource.assignedAt).toLocaleDateString() : 'Unknown'}
                     </Typography>
+                    {resourceDetails.type === 'non_fixed_assets' && resource.items?.[0]?.expirationDate && (
+                        <Typography 
+                            variant="caption" 
+                            display="block" 
+                            sx={{ 
+                                color: (() => {
+                                    const now = new Date();
+                                    const expDate = new Date(resource.items[0].expirationDate);
+                                    const daysUntilExpiry = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
+                                    
+                                    if (daysUntilExpiry <= 0) return 'error.main';  // Expired
+                                    if (daysUntilExpiry <= 7) return 'warning.main'; // About to expire
+                                    return 'success.main';  // Good condition
+                                })(),
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            Expires: {new Date(resource.items[0].expirationDate).toLocaleDateString()}
+                            {(() => {
+                                const now = new Date();
+                                const expDate = new Date(resource.items[0].expirationDate);
+                                const daysUntilExpiry = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
+                                
+                                if (daysUntilExpiry <= 0) return ' (EXPIRED)';
+                                if (daysUntilExpiry <= 7) return ` (Expires in ${daysUntilExpiry} days)`;
+                                return '';
+                            })()}
+                        </Typography>
+                    )}
                 </Box>
             </CardContent>
 
@@ -160,38 +194,53 @@ const ResourceCard = ({ resource, onReturn, onTransfer, onToggleStatus, userRole
                     borderColor: 'divider'
                 }}
             >
-                <Tooltip title="Return this resource" arrow>
-                    <Button
-                        variant="contained"
-                        onClick={() => onReturn(resource)}
-                        startIcon={<ReturnIcon />}
+                {!isExpired ? (
+                    <>
+                        <Tooltip title="Return this resource" arrow>
+                            <Button
+                                variant="contained"
+                                onClick={() => onReturn(resource)}
+                                startIcon={<ReturnIcon />}
+                                sx={{ 
+                                    bgcolor: (theme) => theme.palette.error.main,
+                                    color: 'white',
+                                    '&:hover': { 
+                                        bgcolor: (theme) => theme.palette.error.dark,
+                                    }
+                                }}
+                            >
+                                Return
+                            </Button>
+                        </Tooltip>
+                        <Tooltip title="Transfer this resource" arrow>
+                            <Button
+                                variant="contained"
+                                onClick={() => onTransfer(resource)}
+                                startIcon={<TransferIcon />}
+                                sx={{ 
+                                    bgcolor: (theme) => theme.palette.info.main,
+                                    color: 'white',
+                                    '&:hover': { 
+                                        bgcolor: (theme) => theme.palette.info.dark,
+                                    }
+                                }}
+                            >
+                                Transfer
+                            </Button>
+                        </Tooltip>
+                    </>
+                ) : (
+                    <Chip
+                        label="Resource Expired"
+                        color="error"
+                        variant="outlined"
                         sx={{ 
-                            bgcolor: (theme) => theme.palette.error.main,
-                            color: 'white',
-                            '&:hover': { 
-                                bgcolor: (theme) => theme.palette.error.dark,
-                            }
+                            borderRadius: 1,
+                            fontSize: '0.875rem',
+                            py: 1
                         }}
-                    >
-                        Return
-                    </Button>
-                </Tooltip>
-                <Tooltip title="Transfer this resource" arrow>
-                    <Button
-                        variant="contained"
-                        onClick={() => onTransfer(resource)}
-                        startIcon={<TransferIcon />}
-                        sx={{ 
-                            bgcolor: (theme) => theme.palette.info.main,
-                            color: 'white',
-                            '&:hover': { 
-                                bgcolor: (theme) => theme.palette.info.dark,
-                            }
-                        }}
-                    >
-                        Transfer
-                    </Button>
-                </Tooltip>
+                    />
+                )}
             </CardActions>
         </Card>
     );
