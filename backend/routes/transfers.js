@@ -10,7 +10,7 @@ const Notification = require('../models/Notification');
 const validateTransferDestination = require('../middleware/validateTransferDestination');
 
 // Validation middleware
-const validateTransferData = (req, res, next) => {
+async function validateTransferData(req, res, next) {
   const { transferNo, items } = req.body;
 
   // Validate transfer number (must be numeric)
@@ -30,6 +30,7 @@ const validateTransferData = (req, res, next) => {
   }
 
   // Validate each item has required fields
+  // Check each item's resource and quantity
   for (const item of items) {
     if (!item.resourceId || !item.resourceSerialNumber) {
       return res.status(400).json({
@@ -42,6 +43,31 @@ const validateTransferData = (req, res, next) => {
       return res.status(400).json({
         status: 'error',
         message: 'Each item must have a positive quantity'
+      });
+    }
+
+    // Find source assignment to check available quantity
+    const sourceAssignment = await AssetAssignment.findOne({
+      resource: item.resourceId,
+      'receivedBy.department': req.user.department || req.user.school,
+      status: 'assigned'
+    });
+
+    if (!sourceAssignment) {
+      return res.status(400).json({
+        status: 'error',
+        message: `You don't have this resource assigned to you`
+      });
+    }
+
+    // Calculate total available quantity
+    const totalAvailableQuantity = sourceAssignment.items.reduce((sum, i) => sum + i.quantity, 0);
+
+    // Check if enough quantity is available
+    if (totalAvailableQuantity < item.quantity) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Not enough quantity available for transfer. You have ${totalAvailableQuantity} units but trying to transfer ${item.quantity} units.`
       });
     }
   }
@@ -382,6 +408,34 @@ router.patch('/:id/action', auth, async (req, res) => {
     }
 
     if (action === 'accept') {
+      // Validate quantities before starting transaction
+      for (const item of transfer.items) {
+        // Find source assignment and check available quantity
+        const sourceAssignment = await AssetAssignment.findOne({
+          resource: item.resourceId,
+          'receivedBy.department': transfer.fromDivision,
+          status: 'assigned'
+        });
+
+        if (!sourceAssignment) {
+          return res.status(400).json({
+            status: 'error',
+            message: `Source assignment not found for resource ${item.resourceId}`
+          });
+        }
+
+        // Calculate total available quantity
+        const totalAvailableQuantity = sourceAssignment.items.reduce((sum, i) => sum + i.quantity, 0);
+
+        // Check if enough quantity is available
+        if (totalAvailableQuantity < item.quantity) {
+          return res.status(400).json({
+            status: 'error',
+            message: `Not enough quantity available. Requested: ${item.quantity}, Available: ${totalAvailableQuantity}`
+          });
+        }
+      }
+
       // Start a database transaction
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -415,10 +469,53 @@ router.patch('/:id/action', auth, async (req, res) => {
           const currentDate = new Date();
           const transferDate = transfer.date || currentDate;
 
-          // Set tomorrow as minimum expiration date for non-fixed assets
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          tomorrow.setHours(0, 0, 0, 0);
+          // Find the source assignment to get the original expiration date and update quantities
+          const sourceAssignment = await AssetAssignment.findOne({
+            resource: item.resourceId,
+            'receivedBy.department': transfer.fromDivision,
+            status: 'assigned'
+          }).session(session);
+
+          if (!sourceAssignment && resource.type === 'non_fixed_assets') {
+            throw new Error(`Source assignment not found for non-fixed asset ${resource.name}`);
+          }
+
+          // Calculate total available quantity in source assignment
+          const totalAvailableQuantity = sourceAssignment.items.reduce((sum, i) => sum + i.quantity, 0);
+          
+          // Verify source has enough total quantity
+          if (totalAvailableQuantity < item.quantity) {
+            throw new Error(`Source assignment does not have enough quantity for resource ${resource.name}. Available: ${totalAvailableQuantity}, Requested: ${item.quantity}`);
+          }
+
+          // Keep track of remaining quantity to transfer
+          let remainingQuantity = item.quantity;
+          
+          // Update quantities across items until we've transferred the full amount
+          for (let i = 0; i < sourceAssignment.items.length && remainingQuantity > 0; i++) {
+            const currentItem = sourceAssignment.items[i];
+            if (currentItem.quantity > 0) {
+              const quantityToTransfer = Math.min(currentItem.quantity, remainingQuantity);
+              currentItem.quantity -= quantityToTransfer;
+              remainingQuantity -= quantityToTransfer;
+            }
+          }
+
+          // Remove any items with zero quantity
+          sourceAssignment.items = sourceAssignment.items.filter(item => item.quantity > 0);
+          
+          // If all items are transferred, delete the entire assignment
+          if (sourceAssignment.items.length === 0) {
+            await AssetAssignment.findByIdAndDelete(sourceAssignment._id).session(session);
+          } else {
+            // Save the updated assignment with remaining quantities
+            await sourceAssignment.save({ session });
+          }
+
+          // Get the current resource to ensure we have the latest expiration date
+          const currentResource = await Resource.findById(item.resourceId)
+            .select('expirationDate')
+            .session(session);
 
           // Prepare items with proper expiration date for non-fixed assets
           const assignmentItems = [{
@@ -427,9 +524,9 @@ router.patch('/:id/action', auth, async (req, res) => {
             quantity: item.quantity,
             unitPrice: item.price?.birr || resource.unitPrice?.birr || 0,
             remark: item.remark || '',
-            // Set expiration date only for non-fixed assets
-            ...(resource.type === 'non_fixed_assets' && {
-              expirationDate: item.expirationDate || tomorrow
+            // Use the current resource expiration date for non-fixed assets
+            ...(resource.type === 'non_fixed_assets' && currentResource?.expirationDate && {
+              expirationDate: currentResource.expirationDate
             })
           }];
 
