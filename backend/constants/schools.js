@@ -3,7 +3,11 @@
 const SCHOOLS = {
   COMPUTING: 'School of Computing',
   BUSINESS: 'School of Business and Economics',
-  HEALTH: 'School of Health Science'
+  HEALTH: 'School of Health Science',
+  ELECTRICAL: 'School of Computer and Electrical Engineering',
+  CIVIL: 'School of Civil and COTM',
+  NATURAL: 'School of Natural Science',
+  SOCIAL: 'School of Social Science',
 };
 
 // Department mappings for each school
@@ -22,7 +26,30 @@ const SCHOOL_DEPARTMENTS = {
     'Medical Laboratory',
     'Nursing',
     'Psychiatrist'
+  ],
+  [SCHOOLS.ELECTRICAL]: [
+    'Electrical Engineering',
+    'Computer Engineering'
+    
+  ],
+  [SCHOOLS.CIVIL]: [
+    'Civil Engineering',
+    'COTM Engineering'
+    
+  ],
+  [SCHOOLS.NATURAL]: [
+    'Physics',
+    'Biology',
+    'Chemistry'
+    
+  ],
+  [SCHOOLS.SOCIAL]: [
+    'History',
+    'Psychology',
+    'Logistics'
+    
   ]
+
 };
 
 const SCHOOLS_LIST = Object.values(SCHOOLS);

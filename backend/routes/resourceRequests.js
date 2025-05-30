@@ -25,7 +25,20 @@ const REQUEST_STATUS = {
 
 // Helper function to find asset manager based on school
 const findAssetManager = async (school) => {
-  const assetManagerRole = school === SCHOOLS.COMPUTING ? ROLES.IOT_ASSET_MANAGER : ROLES.DDU_ASSET_MANAGER;
+  // Get the actual school values, not the keys
+  const iotSchools = [SCHOOLS.COMPUTING, SCHOOLS.CIVIL, SCHOOLS.ELECTRICAL].map(s => s);
+  const dduSchools = [SCHOOLS.NATURAL, SCHOOLS.SOCIAL, SCHOOLS.BUSINESS, SCHOOLS.HEALTH].map(s => s);
+
+  let assetManagerRole;
+
+  if (iotSchools.includes(school)) {
+    assetManagerRole = ROLES.IOT_ASSET_MANAGER;
+  } else if (dduSchools.includes(school)) {
+    assetManagerRole = ROLES.DDU_ASSET_MANAGER;
+  } else {
+    throw new Error(`Invalid school: ${school}`);
+  }
+  
   const assetManager = await User.findOne({
     role: assetManagerRole,
     status: 'approved'
@@ -183,6 +196,12 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
+    console.log('User details:', {
+      role: requestingUser.role,
+      department: requestingUser.department,
+      school: requestingUser.school
+    });
+
     // Validate user role
     if (requestingUser.role !== role) {
       return res.status(400).json({
@@ -197,10 +216,33 @@ router.post('/', auth, async (req, res) => {
       school: requestingUser.school
     });
 
+    // For staff and department head, ensure we have the correct school
+    let userSchool = school;
+    if (!userSchool && requestingUser.school) {
+      userSchool = requestingUser.school;
+    } else if (!userSchool && requestingUser.department) {
+      // Find school from department
+      for (const [schoolName, departments] of Object.entries(SCHOOL_DEPARTMENTS)) {
+        if (departments.includes(requestingUser.department)) {
+          userSchool = schoolName;
+          break;
+        }
+      }
+      if (!userSchool) {
+        console.error('Could not determine school for department:', requestingUser.department);
+        return res.status(400).json({
+          success: false,
+          message: `Could not determine school for department: ${requestingUser.department}. Please ensure department name matches exactly with the system configuration.`
+        });
+      }
+    }
+
+    console.log('Determined school:', userSchool);
+
     // Get approval chain based on user's role
     let approvers;
     try {
-      approvers = await getApprovalChain(requestingUser, role === ROLES.STAFF ? school : requestingUser.school);
+      approvers = await getApprovalChain(requestingUser, userSchool);
     } catch (error) {
       console.error('Error getting approval chain:', error);
       return res.status(400).json({
@@ -439,7 +481,7 @@ router.get('/', auth, async (req, res) => {
 
       case 'ddu_asset_manager':
         // DDU Asset Managers see requests from Business and Health schools that are approved by deans
-        filter['school'] = { $in: [SCHOOLS.BUSINESS, SCHOOLS.HEALTH] };
+        filter['school'] = { $in: [SCHOOLS.BUSINESS, SCHOOLS.HEALTH, SCHOOLS.NATURAL, SCHOOLS.SOCIAL] };
         filter['schoolDeanStatus'] = 'approved';
         filter['assetManagerStatus'] = status || 'pending';
         filter['status'] = { $ne: 'rejected' };
@@ -447,7 +489,7 @@ router.get('/', auth, async (req, res) => {
 
       case 'iot_asset_manager':
         // IOT Asset Managers see requests from Computing school that are approved by deans
-        filter['school'] = SCHOOLS.COMPUTING;
+        filter['school'] ={ $in: [ SCHOOLS.COMPUTING,SCHOOLS.ELECTRICAL, SCHOOLS.CIVIL]};
         filter['schoolDeanStatus'] = 'approved';
         filter['assetManagerStatus'] = status || 'pending';
         filter['status'] = { $ne: 'rejected' };
@@ -684,10 +726,10 @@ router.patch('/:requestId/status', auth, async (req, res) => {
         filter['schoolDeanStatus'] = 'approved';
         filter['assetManagerStatus'] = 'pending';
 
-        // DDU asset manager handles Business and Health schools
-        // IOT asset manager handles Computing school
+        // DDU asset manager handles schools
+        // IOT asset manager handles school
         const userSchools = req.user.role === 'ddu_asset_manager' ?
-          [SCHOOLS.BUSINESS, SCHOOLS.HEALTH] : [SCHOOLS.COMPUTING];
+          [SCHOOLS.BUSINESS, SCHOOLS.HEALTH, SCHOOLS.NATURAL, SCHOOLS.SOCIAL] : [SCHOOLS.COMPUTING, SCHOOLS.CIVIL, SCHOOLS.ELECTRICAL];
         
         // Add school filter
         filter['school'] = { $in: userSchools };
@@ -769,9 +811,19 @@ router.patch('/:requestId/status', auth, async (req, res) => {
 
       // If school dean approves, notify asset manager
       if (req.user.role === 'school_dean' && action === 'approve') {
-        const assetManagerRole = updatedRequest.school === SCHOOLS.COMPUTING ?
-          'iot_asset_manager' : 'ddu_asset_manager';
 
+        const iotSchools = [SCHOOLS.COMPUTING, SCHOOLS.CIVIL, SCHOOLS.ELECTRICAL];
+        const dduSchools = [SCHOOLS.NATURAL, SCHOOLS.SOCIAL, SCHOOLS.BUSINESS, SCHOOLS.HEALTH];
+
+        let assetManagerRole;
+
+        if (iotSchools.includes(updatedRequest.school)) {
+          assetManagerRole = 'iot_asset_manager';
+        } else if (dduSchools.includes(updatedRequest.school)) {
+          assetManagerRole = 'ddu_asset_manager';
+        } else {
+          throw new Error(`Invalid school: ${updatedRequest.school}`);
+        }
         const assetManager = await User.findOne({
           role: assetManagerRole,
           status: 'approved'

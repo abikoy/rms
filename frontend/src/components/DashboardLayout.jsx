@@ -8,7 +8,7 @@ const drawerWidth = 250;
 
 const DashboardLayout = ({ children }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useSelector(state => state.auth);
 
@@ -22,7 +22,7 @@ const DashboardLayout = ({ children }) => {
       <Sidebar 
         open={mobileOpen} 
         onClose={handleDrawerToggle}
-        variant={isMobile ? 'temporary' : 'permanent'}
+        variant={isSmallScreen ? 'temporary' : 'permanent'}
       />
       <Box
         component="main"
@@ -31,8 +31,8 @@ const DashboardLayout = ({ children }) => {
           p: { xs: 2, sm: 3 },
           backgroundColor: '#f8f9fa',
           overflow: 'auto',
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` }
+          width: { xs: '100%', sm: `calc(100% - ${drawerWidth}px)` },
+          ml: { xs: 0, sm: `${drawerWidth}px` }
         }}
       >
         <Toolbar /> {/* Add spacing below navbar */}

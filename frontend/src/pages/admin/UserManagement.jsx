@@ -198,24 +198,135 @@ const UserManagement = () => {
     const paginatedUsers = filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
     return (
-      <Box>
-        <TableContainer component={Paper} sx={{
-          maxHeight: { xs: 350, sm: 500 },
-          overflowX: 'auto',
-          boxShadow: { xs: 0, sm: 2 },
-          borderRadius: { xs: 0, sm: 2 },
-          minWidth: { xs: '100%', sm: 650 }
-        }}>
-          <Table stickyHeader aria-label="user table" sx={{ minWidth: { xs: 360, sm: 650 } }} size={isMobile ? 'small' : 'medium'}>
+      <Box sx={{ width: '100%' }}>
+        {/* Mobile and Tablet View (Card Layout) */}
+        <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 2 }}>
+          {filteredUsers.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 3 }}>
+              {usersLoading ? <CircularProgress size={24} /> : 'No users found.'}
+            </Box>
+          ) : (
+            paginatedUsers.map((user) => (
+              <Paper
+                key={user._id}
+                sx={{
+                  p: 2,
+                  mb: 2,
+                  borderRadius: 1,
+                  boxShadow: 1,
+                }}
+              >
+                <Grid container spacing={1}>
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">Email</Typography>
+                    <Typography variant="body1">{user.email}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Name</Typography>
+                    <Typography variant="body1">{user.fullName}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Role</Typography>
+                    <Box
+                      sx={{
+                        display: 'inline-block',
+                        px: 1,
+                        py: 0.5,
+                        borderRadius: 1,
+                        bgcolor: user.role === 'system_admin' ? 'primary.main' : 'secondary.main',
+                        color: '#fff',
+                        fontSize: '0.8rem',
+                      }}
+                    >
+                      {user.role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Status</Typography>
+                    <Typography variant="body1">{user.status}</Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                      {activeTab === 0 ? (
+                        <>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="success"
+                            onClick={() => handleApprove(user._id)}
+                            startIcon={<CheckIcon />}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="error"
+                            onClick={() => handleReject(user._id)}
+                            startIcon={<CloseIcon />}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={() => handleViewDetails(user)}
+                            startIcon={<VisibilityIcon />}
+                          >
+                            View
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="info"
+                            onClick={() => handleEdit(user)}
+                            startIcon={<EditIcon />}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="error"
+                            onClick={() => handleDelete(user._id)}
+                            startIcon={<DeleteIcon />}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Paper>
+            ))
+          )}
+        </Box>
+
+        {/* Desktop View (Table Layout) */}
+        <TableContainer 
+          component={Paper} 
+          sx={{
+            display: { xs: 'none', md: 'block' },
+            maxHeight: 500,
+            overflowX: 'auto',
+            boxShadow: 2,
+            borderRadius: 2,
+          }}
+        >
+          <Table stickyHeader aria-label="user table" size="medium">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, px: { xs: 1, sm: 2 } }}>Name</TableCell>
-                <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, px: { xs: 1, sm: 2 } }}>Email</TableCell>
-                <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, px: { xs: 1, sm: 2 } }}>School</TableCell>
-                <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, px: { xs: 1, sm: 2 } }}>Department</TableCell>
-                <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, px: { xs: 1, sm: 2 } }}>Role</TableCell>
-                <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, px: { xs: 1, sm: 2 } }}>Status</TableCell>
-                <TableCell align="center" sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, px: { xs: 1, sm: 2 } }}>Actions</TableCell>
+                <TableCell>Name</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>School</TableCell>
+                <TableCell>Department</TableCell>
+                <TableCell>Role</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="center">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -228,10 +339,10 @@ const UserManagement = () => {
               ) : (
                 paginatedUsers.map((user) => (
                   <TableRow key={user._id} hover>
-                    <TableCell sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>{user.fullName}</TableCell>
-                    <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' } }}>{user.email}</TableCell>
-                    <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' } }}>{user.school || '-'}</TableCell>
-                    <TableCell sx={{ fontSize: { xs: '0.85rem', sm: '1rem' } }}>{user.department || '-'}</TableCell>
+                    <TableCell>{user.fullName}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{user.school || '-'}</TableCell>
+                    <TableCell>{user.department || '-'}</TableCell>
                     <TableCell>
                       <Box
                         sx={{

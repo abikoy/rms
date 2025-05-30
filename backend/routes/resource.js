@@ -79,10 +79,14 @@ router.get('/', auth, async (req, res) => {
       const { SCHOOLS } = require('../constants/schools');
       switch (req.user.school) {
         case SCHOOLS.COMPUTING:
+          case SCHOOLS.CIVIL:
+        case SCHOOLS.ELECTRICAL:
           managerType = 'iot_asset_manager';
           break;
         case SCHOOLS.BUSINESS:
         case SCHOOLS.HEALTH:
+         case SCHOOLS.NATURAL:
+         case SCHOOLS.SOCIAL:
           managerType = 'ddu_asset_manager';
           break;
         default:
@@ -103,10 +107,14 @@ router.get('/', auth, async (req, res) => {
       const { SCHOOLS } = require('../constants/schools');
       switch (req.user.school) {
         case SCHOOLS.COMPUTING:
+        case SCHOOLS.CIVIL:
+        case SCHOOLS.ELECTRICAL:
           managerType = 'iot_asset_manager';
           break;
         case SCHOOLS.BUSINESS:
         case SCHOOLS.HEALTH:
+        case SCHOOLS.NATURAL:
+        case SCHOOLS.SOCIAL:
           managerType = 'ddu_asset_manager';
           break;
         default:
@@ -128,10 +136,14 @@ router.get('/', auth, async (req, res) => {
       // Determine manager type based on staff's school
       switch (req.user.school) {
         case SCHOOLS.COMPUTING:
+        case SCHOOLS.CIVIL:
+        case SCHOOLS.ELECTRICAL:
           managerType = 'iot_asset_manager';
           break;
         case SCHOOLS.BUSINESS:
         case SCHOOLS.HEALTH:
+        case SCHOOLS.NATURAL:
+        case SCHOOLS.SOCIAL:
           managerType = 'ddu_asset_manager';
           break;
         default:

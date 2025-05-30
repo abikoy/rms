@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -36,21 +36,32 @@ const upload = multer({
 // @access  Private
 router.put('/update', auth, async (req, res) => {
   try {
-    const { fullName, email, phone, currentPassword, newPassword } = req.body;
+    const { fullName, phone, currentPassword, newPassword } = req.body;
     const userId = req.user.id;
 
-    console.log('Update request received:', { fullName, email, phone });
+    console.log('Update request received:', { fullName, phone });
 
     // Get user
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
     }
 
     // Update basic info
-    if (fullName) user.fullName = fullName;
-    if (email) user.email = email;
-    if (phone) user.phone = phone;
+    if (fullName) user.fullName = fullName.trim();
+    if (phone) {
+      // Basic phone validation
+      if (!/^\+?[0-9\s-()]+$/.test(phone)) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid phone number format'
+        });
+      }
+      user.phone = phone.trim();
+    }
 
     // Handle password change
     if (newPassword && currentPassword) {
@@ -81,20 +92,30 @@ router.put('/update', auth, async (req, res) => {
 router.post('/upload-photo', auth, upload.single('photo'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'Please upload a file' });
+      return res.status(400).json({
+        status: 'error',
+        message: 'Please upload a file'
+      });
     }
 
     const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
     }
 
+    // Get API URL from environment or use default
+    const apiUrl = process.env.API_URL || 'http://localhost:5003';
+    
     // Update user profile photo
-    user.profilePhoto = `/uploads/profile-photos/${req.file.filename}`;
+    user.profilePhoto = `${apiUrl}/uploads/profile-photos/${req.file.filename}`;
     await user.save();
 
     res.json({
-      message: 'File uploaded successfully',
+      status: 'success',
+      message: 'Profile photo updated successfully',
       photoUrl: user.profilePhoto
     });
   } catch (err) {

@@ -123,20 +123,35 @@ const ResourceRequestForm = () => {
         return;
       }
 
-      // Determine school based on department
+      // Import school constants
+      const SCHOOLS = {
+        COMPUTING: 'School of Computing',
+        BUSINESS: 'School of Business and Economics',
+        HEALTH: 'School of Health Science',
+        ELECTRICAL: 'School of Computer and Electrical Engineering',
+        CIVIL: 'School of Civil and COTM',
+        NATURAL: 'School of Natural Science',
+        SOCIAL: 'School of Social Science',
+      };
+
+      // Department mappings for each school
+      const SCHOOL_DEPARTMENTS = {
+        [SCHOOLS.COMPUTING]: ['Software Engineering', 'Computer Science', 'Information Technology'],
+        [SCHOOLS.BUSINESS]: ['Economics', 'Business'],
+        [SCHOOLS.HEALTH]: ['Midwifery', 'Medical Laboratory', 'Nursing', 'Psychiatrist'],
+        [SCHOOLS.ELECTRICAL]: ['Electrical Engineering', 'Computer Engineering'],
+        [SCHOOLS.CIVIL]: ['Civil Engineering', 'COTM Engineering'],
+        [SCHOOLS.NATURAL]: ['Physics', 'Biology', 'Chemistry'],
+        [SCHOOLS.SOCIAL]: ['History', 'Psychology', 'Logistics']
+      };
+
+      // Find school by exact department match
       let userSchool;
-      if (user.department.toLowerCase().includes('computer') || 
-          user.department.toLowerCase().includes('software') || 
-          user.department.toLowerCase().includes('it')) {
-        userSchool = 'School of Computing';
-      } else if (user.department.toLowerCase().includes('business') || 
-                 user.department.toLowerCase().includes('economics') || 
-                 user.department.toLowerCase().includes('accounting')) {
-        userSchool = 'School of Business and Economics';
-      } else if (user.department.toLowerCase().includes('health') || 
-                 user.department.toLowerCase().includes('nursing') || 
-                 user.department.toLowerCase().includes('medicine')) {
-        userSchool = 'School of Health Science';
+      for (const [school, departments] of Object.entries(SCHOOL_DEPARTMENTS)) {
+        if (departments.includes(user.department)) {
+          userSchool = school;
+          break;
+        }
       }
 
       if (!userSchool) {

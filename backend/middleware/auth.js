@@ -72,7 +72,11 @@ const auth = async (req, res, next) => {
         school: user.school || 'Not assigned'
       });
 
-      req.user = user;
+      // Set user in request object with proper id field
+      req.user = {
+        id: user._id,  // Convert _id to id for consistency
+        ...user
+      };
       next();
     } catch (tokenError) {
       console.error('Token verification error:', tokenError.message);

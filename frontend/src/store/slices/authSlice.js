@@ -89,20 +89,19 @@ export const fetchUser = createAsyncThunk(
 
 export const updateUser = createAsyncThunk(
   'auth/updateUser',
-  async (profileData, { rejectWithValue, getState }) => {
+  async (formData, { rejectWithValue }) => {
     try {
-      // Get current user data
-      const { auth: { user } } = getState();
+      const response = await axios.put(endpoints.auth.profile, formData, {
+        headers: {
+          'Content-Type': formData instanceof FormData ? 'multipart/form-data' : 'application/json'
+        }
+      });
       
-      // Ensure required fields are present
-      const updatedData = {
-        ...profileData,
-        department: profileData.department || user.department,
-        role: profileData.role || user.role
+      // Update the user in the state
+      return {
+        ...response.data,
+        user: response.data.user // Ensure we pass the user object correctly
       };
-
-      const response = await axios.put(endpoints.auth.profile, updatedData);
-      return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update profile');
     }
@@ -201,8 +200,9 @@ const authSlice = createSlice({
       })
       .addCase(fetchUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user;
+        state.user = action.payload;
         state.error = null;
+        state.isAuthenticated = true;
         localStorage.setItem('authState', JSON.stringify(state));
       })
       .addCase(fetchUser.rejected, (state, action) => {

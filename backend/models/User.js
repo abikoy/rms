@@ -48,7 +48,7 @@ const userSchema = new mongoose.Schema({
   department: {
     type: String,
     required: function() {
-      return ['staff', 'department_head', 'school_dean'].includes(this.role);
+      return ['staff', 'department_head'].includes(this.role);
     },
     validate: {
       validator: function(v) {

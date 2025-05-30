@@ -2,7 +2,33 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
 const User = require('../models/User');
+
+// Configure multer for profile photo uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/profiles/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: function (req, file, cb) {
+    const filetypes = /jpeg|jpg|png/;
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = filetypes.test(file.mimetype);
+    if (mimetype && extname) {
+      return cb(null, true);
+    }
+    cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
+  }
+});
 const auth = require('../middleware/auth');
 const { isDepartmentInSchool, getDepartmentsBySchool } = require('../constants/departments');
 const { SCHOOLS_LIST } = require('../constants/schools');
@@ -265,9 +291,9 @@ router.post('/login', async (req, res) => {
 // @route   PUT api/auth/profile
 // @desc    Update user profile
 // @access  Private
-router.put('/profile', auth, async (req, res) => {
+router.put('/profile', auth, upload.single('photo'), async (req, res) => {
   try {
-    const { fullName, email, phoneNumber, department, school } = req.body;
+    const { fullName, currentPassword, newPassword } = req.body;
     
     // Find user by id (from auth middleware)
     const user = await User.findById(req.user.id);
@@ -275,46 +301,58 @@ router.put('/profile', auth, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // If email is being changed, check if new email already exists
-    if (email && email !== user.email) {
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ message: 'Email already in use' });
-      }
+    // Update basic info
+    if (fullName) user.fullName = fullName.trim();
+
+    // Handle photo upload
+    if (req.file) {
+      user.profilePhoto = `/uploads/profiles/${req.file.filename}`;
     }
 
-    // Validate department if provided
-    if (department && school) {
-      if (!isDepartmentInSchool(department, school)) {
-        const availableDepts = getDepartmentsBySchool(school);
+    // Handle password change
+    if (currentPassword && newPassword) {
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
         return res.status(400).json({
-          success: false,
-          message: `Invalid department for ${school}. Must be one of: ${availableDepts.join(', ')}`
+          status: 'error',
+          message: 'Current password is incorrect'
         });
       }
+
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(newPassword, salt);
     }
 
-    // Update fields
-    if (fullName) user.fullName = fullName;
-    if (email) user.email = email;
-    if (phoneNumber) user.phoneNumber = phoneNumber;
-    if (department) user.department = department;
-    if (school) user.school = school;
-
+    // Save the user
     await user.save();
 
-    // Return updated user without password
-    const userData = {
-      _id: user._id,
-      fullName: user.fullName,
-      email: user.email,
-      role: user.role,
-      department: user.department,
-      school: user.school,
-      phoneNumber: user.phoneNumber
+    // Handle photo upload
+    if (req.file) {
+      user.profilePhoto = '/uploads/profiles/' + req.file.filename;
+    }
+
+    // Save all changes
+    await user.save();
+
+    // Return updated user without sensitive fields
+    const userToReturn = {
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        department: user.department,
+        school: user.school,
+        profilePhoto: user.profilePhoto
+      }
     };
 
-    res.json({ user: userData });
+    res.json({
+      status: 'success',
+      message: 'Profile updated successfully',
+      ...userToReturn
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ message: 'Server error' });
