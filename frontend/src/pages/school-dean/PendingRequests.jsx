@@ -25,10 +25,12 @@ import axios from 'axios';
 const PendingRequests = () => {
   const [requests, setRequests] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [error, setError] = useState(null);
   const [actionType, setActionType] = useState(null);
   const [comment, setComment] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const fetchRequests = async () => {
     try {
@@ -117,27 +119,48 @@ const PendingRequests = () => {
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <Button
-                        variant="outlined"
                         size="small"
+                        variant="outlined"
                         onClick={() => {
                           setSelectedRequest(request);
-                          setDialogOpen(true);
-                          setActionType('view');
+                          setViewDialogOpen(true);
                         }}
                       >
                         View
                       </Button>
                       <Button
-                        variant="contained"
-                        color="primary"
                         size="small"
+                        variant="contained"
+                        color="success"
                         onClick={() => {
                           setSelectedRequest(request);
-                          setDialogOpen(true);
                           setActionType('approve');
+                          setConfirmDialogOpen(true);
+                        }}
+                        sx={{ 
+                          minWidth: '100px',
+                          '&:hover': { transform: 'translateY(-1px)' },
+                          transition: 'transform 0.2s'
                         }}
                       >
-                        Review
+                        Approve
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="error"
+                        onClick={() => {
+                          setSelectedRequest(request);
+                          setActionType('reject');
+                          setConfirmDialogOpen(true);
+                        }}
+                        sx={{ 
+                          minWidth: '100px',
+                          '&:hover': { transform: 'translateY(-1px)' },
+                          transition: 'transform 0.2s'
+                        }}
+                      >
+                        Reject
                       </Button>
                     </Box>
                   </TableCell>
@@ -147,16 +170,14 @@ const PendingRequests = () => {
           </Table>
         </TableContainer>
 
+        {/* View Dialog */}
         <Dialog 
-          open={dialogOpen} 
-          onClose={() => setDialogOpen(false)}
+          open={viewDialogOpen} 
+          onClose={() => setViewDialogOpen(false)}
           maxWidth="md"
           fullWidth
         >
-          <DialogTitle>
-            {actionType === 'view' ? 'Request Details' : 
-             actionType === 'approve' ? 'Approve Request' : 'Reject Request'}
-          </DialogTitle>
+          <DialogTitle>Request Details</DialogTitle>
           <DialogContent>
             {selectedRequest && (
               <Box sx={{ mt: 2 }}>
@@ -278,6 +299,40 @@ const PendingRequests = () => {
                 </Button>
               </>
             )}
+          </DialogActions>
+        </Dialog>
+
+        {/* Confirmation Dialog */}
+        <Dialog
+          open={confirmDialogOpen}
+          onClose={() => setConfirmDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            {actionType === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'}
+          </DialogTitle>
+          <DialogContent>
+            <Typography>
+              {actionType === 'approve' 
+                ? 'Are you sure you want to approve this resource request?'
+                : 'Are you sure you want to reject this resource request?'}
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setConfirmDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              color={actionType === 'approve' ? 'success' : 'error'}
+              onClick={() => {
+                handleAction(selectedRequest._id, actionType);
+                setConfirmDialogOpen(false);
+              }}
+            >
+              {actionType === 'approve' ? 'Yes, Approve' : 'Yes, Reject'}
+            </Button>
           </DialogActions>
         </Dialog>
       </Box>

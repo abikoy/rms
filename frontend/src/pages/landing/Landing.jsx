@@ -90,6 +90,7 @@ function Landing() {
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Button color="primary" onClick={() => scrollToSection(homeRef)}>Home</Button>
+            <Button color="primary" onClick={() => scrollToSection(featuresRef)}>Features</Button>
             <Button color="primary" onClick={() => scrollToSection(servicesRef)}>Services</Button>
             <Button color="primary" onClick={() => scrollToSection(contactRef)}>Contact</Button>
             
