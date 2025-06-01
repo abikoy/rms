@@ -966,7 +966,7 @@ function Landing() {
             }}
           >
             <Typography variant="body2">
-              © {new Date().getFullYear()} Dire Dawa University Resource Management System. All rights reserved.
+              © {new Date().getFullYear()} Dire Dawa University Resource Management System. All rights reserved.  ( developed by Haile Kinfu)
             </Typography>
           </Box>
         </Container>
